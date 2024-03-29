@@ -1,0 +1,19 @@
+providers = ["node"]
+
+[phases.install]
+cmds = ["yarn install"]
+
+[phases.lint]
+cmds = ["yarn run lint && yarn run fmt"]
+dependsOn = ["install"]
+
+[phases.build]
+cmds = ["yarn build"]
+dependsOn = ["lint"]
+
+[phases.test]
+cmds = ["yarn run test"]
+dependsOn = ["build"]
+
+[variables]
+NODE_ENV = 'production'
