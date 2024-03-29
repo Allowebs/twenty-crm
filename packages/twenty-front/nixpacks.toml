@@ -1,5 +1,8 @@
 providers = ["node"]
 
+[phases.setup]
+nixPkgs = ["nodejs_18", "yarn-4_x"]
+
 [phases.install]
 cmds = ["yarn install"]
 
