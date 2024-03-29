@@ -42,7 +42,6 @@
   },
   "engines": {
     "node": "^18.17.1",
-    "npm": "please-use-yarn",
     "yarn": "^4.0.2"
   },
   "browserslist": {
@@ -59,5 +58,6 @@
   },
   "msw": {
     "workerDirectory": "public"
-  }
+  },
+  "packageManager": "yarn@4.1.1+sha256.f3cc0eda8e5560e529c7147565b30faa43b4e472d90e8634d7134a37c7f59781"
 }
