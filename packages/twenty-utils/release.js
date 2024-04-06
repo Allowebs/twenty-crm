@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 const fs = require('fs');
 const semver = require('semver');
 const path = require('path');

@@ -324,7 +324,11 @@
     "start-front": "cross-env FORCE_COLOR=true concurrently -n \"twenty-front\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx start twenty-front\"",
     "build-front": "cross-env FORCE_COLOR=true concurrently -n \"twenty-front\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx build twenty-front\"",
     "start-server": "cross-env FORCE_COLOR=true concurrently -n \"twenty-server\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx start twenty-server\"",
-    "build-server": "cross-env FORCE_COLOR=true concurrently -n \"twenty-server\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx build twenty-server\""
+    "build-server": "cross-env FORCE_COLOR=true concurrently -n \"twenty-server\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx build twenty-server\"",
+    "install-extension": "cross-env FORCE_COLOR=true concurrently -n \"twenty-chrome-extension\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx install twenty-chrome-extension\"",
+    "graphql-generate-extension": "cross-env FORCE_COLOR=true concurrently -n \"twenty-chrome-extension\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx graphql:generate twenty-chrome-extension\"",
+    "build-extension": "cross-env FORCE_COLOR=true concurrently -n \"twenty-chrome-extension\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx build twenty-chrome-extension\"",
+    "start-extension": "cross-env FORCE_COLOR=true concurrently -n \"twenty-chrome-extension\" -c \"bgBlue.bold,bgGreen.bold\" \"yarn nx start twenty-chrome-extension\""
   },
   "workspaces": {
     "packages": [
