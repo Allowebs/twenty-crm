@@ -1,31 +1,34 @@
-import React, { useEffect, useRef } from 'react';
-import styled from '@emotion/styled';
-import { motion } from 'framer-motion';
-import { Key } from 'ts-key-enum';
-
+import { ModalHotkeyScope } from '@/ui/layout/modal/components/types/ModalHotkeyScope';
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import {
   ClickOutsideMode,
-  useListenClickOutside,
-} from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-
-import { ModalHotkeyScope } from './types/ModalHotkeyScope';
+  useListenClickOutsideV2,
+} from '@/ui/utilities/pointer-event/hooks/useListenClickOutsideV2';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
+import styled from '@emotion/styled';
+import { motion } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { Key } from 'ts-key-enum';
 
 const StyledModalDiv = styled(motion.div)<{
   size?: ModalSize;
   padding?: ModalPadding;
+  isMobile: boolean;
 }>`
   display: flex;
   flex-direction: column;
   background: ${({ theme }) => theme.background.primary};
   color: ${({ theme }) => theme.font.color.primary};
-  border-radius: ${({ theme }) => theme.border.radius.md};
+  border-radius: ${({ theme, isMobile }) => {
+    if (isMobile) return `0`;
+    return theme.border.radius.md;
+  }};
   overflow: hidden;
-  max-height: 90vh;
   z-index: 10000; // should be higher than Backdrop's z-index
 
-  width: ${({ size, theme }) => {
+  width: ${({ isMobile, size, theme }) => {
+    if (isMobile) return theme.modal.size.fullscreen;
     switch (size) {
       case 'small':
         return theme.modal.size.sm;
@@ -52,6 +55,9 @@ const StyledModalDiv = styled(motion.div)<{
         return 'auto';
     }
   }};
+  height: ${({ isMobile, theme }) =>
+    isMobile ? theme.modal.size.fullscreen : 'auto'};
+  max-height: ${({ isMobile }) => (isMobile ? 'none' : '90dvh')};
 `;
 
 const StyledHeader = styled.div`
@@ -81,9 +87,14 @@ const StyledFooter = styled.div`
   padding: ${({ theme }) => theme.spacing(5)};
 `;
 
-const StyledBackDrop = styled(motion.div)`
+const StyledBackDrop = styled(motion.div)<{
+  modalVariant: ModalVariants;
+}>`
   align-items: center;
-  background: ${({ theme }) => theme.background.overlay};
+  background: ${({ theme, modalVariant }) =>
+    modalVariant === 'primary'
+      ? theme.background.overlayPrimary
+      : theme.background.overlaySecondary};
   display: flex;
   height: 100%;
   justify-content: center;
@@ -92,11 +103,9 @@ const StyledBackDrop = styled(motion.div)`
   top: 0;
   width: 100%;
   z-index: 9999;
+  user-select: none;
 `;
 
-/**
- * Modal components
- */
 type ModalHeaderProps = React.PropsWithChildren & {
   className?: string;
 };
@@ -121,59 +130,57 @@ const ModalFooter = ({ children, className }: ModalFooterProps) => (
   <StyledFooter className={className}>{children}</StyledFooter>
 );
 
-/**
- * Modal
- */
 export type ModalSize = 'small' | 'medium' | 'large';
 export type ModalPadding = 'none' | 'small' | 'medium' | 'large';
+export type ModalVariants = 'primary' | 'secondary';
 
-type ModalProps = React.PropsWithChildren & {
-  isOpen?: boolean;
-  onClose?: () => void;
-  hotkeyScope?: ModalHotkeyScope;
-  onEnter?: () => void;
+export type ModalProps = React.PropsWithChildren & {
   size?: ModalSize;
   padding?: ModalPadding;
   className?: string;
-};
+  hotkeyScope?: ModalHotkeyScope;
+  onEnter?: () => void;
+  modalVariant?: ModalVariants;
+} & (
+    | { isClosable: true; onClose: () => void }
+    | { isClosable?: false; onClose?: never }
+  );
 
-const modalVariants = {
+const modalAnimation = {
   hidden: { opacity: 0 },
   visible: { opacity: 1 },
   exit: { opacity: 0 },
 };
 
 export const Modal = ({
-  isOpen = false,
   children,
-  onClose,
-  hotkeyScope = ModalHotkeyScope.Default,
-  onEnter,
   size = 'medium',
   padding = 'medium',
   className,
+  hotkeyScope = ModalHotkeyScope.Default,
+  onEnter,
+  isClosable = false,
+  onClose,
+  modalVariant = 'primary',
 }: ModalProps) => {
+  const isMobile = useIsMobile();
   const modalRef = useRef<HTMLDivElement>(null);
-
-  useListenClickOutside({
-    refs: [modalRef],
-    callback: () => onClose?.(),
-    mode: ClickOutsideMode.comparePixels,
-  });
 
   const {
     goBackToPreviousHotkeyScope,
     setHotkeyScopeAndMemorizePreviousScope,
   } = usePreviousHotkeyScope();
 
-  useScopedHotkeys(
-    [Key.Escape],
-    () => {
-      onClose?.();
-    },
+  useEffect(() => {
+    setHotkeyScopeAndMemorizePreviousScope(hotkeyScope);
+    return () => {
+      goBackToPreviousHotkeyScope();
+    };
+  }, [
     hotkeyScope,
-    [onClose],
-  );
+    setHotkeyScopeAndMemorizePreviousScope,
+    goBackToPreviousHotkeyScope,
+  ]);
 
   useScopedHotkeys(
     [Key.Enter],
@@ -183,25 +190,37 @@ export const Modal = ({
     hotkeyScope,
   );
 
-  useEffect(() => {
-    if (isOpen) {
-      setHotkeyScopeAndMemorizePreviousScope(hotkeyScope);
-    } else {
-      goBackToPreviousHotkeyScope();
-    }
-  }, [
-    goBackToPreviousHotkeyScope,
+  useScopedHotkeys(
+    [Key.Escape],
+    () => {
+      if (isClosable && onClose !== undefined) {
+        onClose();
+      }
+    },
     hotkeyScope,
-    isOpen,
-    setHotkeyScopeAndMemorizePreviousScope,
-  ]);
+  );
 
-  return isOpen ? (
-    <StyledBackDrop>
+  useListenClickOutsideV2({
+    refs: [modalRef],
+    listenerId: 'MODAL_CLICK_OUTSIDE_LISTENER_ID',
+    callback: () => {
+      if (isClosable && onClose !== undefined) {
+        onClose();
+      }
+    },
+    mode: ClickOutsideMode.comparePixels,
+  });
+
+  const stopEventPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <StyledBackDrop
+      onMouseDown={stopEventPropagation}
+      modalVariant={modalVariant}
+    >
       <StyledModalDiv
-        // framer-motion seems to have typing problems with refs
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         ref={modalRef}
         size={size}
         padding={padding}
@@ -209,14 +228,13 @@ export const Modal = ({
         animate="visible"
         exit="exit"
         layout
-        variants={modalVariants}
+        variants={modalAnimation}
         className={className}
+        isMobile={isMobile}
       >
         {children}
       </StyledModalDiv>
     </StyledBackDrop>
-  ) : (
-    <></>
   );
 };
 

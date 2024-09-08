@@ -2,6 +2,7 @@
 .DS_Store
 /.idea
 **/**/node_modules/
+.cache
 
 # yarn is the recommended package manager across the project
 **/**/.package-lock.json
@@ -16,9 +17,14 @@
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
-coverage
 .vercel
 
 **/**/logs/**
 
+coverage
+dist
 storybook-static
+*.tsbuildinfo
+.eslintcache
+.nyc_output
+test-results/

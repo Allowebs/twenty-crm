@@ -1,76 +1,80 @@
 import { Injectable } from '@nestjs/common';
-import { GraphQLISODateTime, GraphQLTimestamp } from '@nestjs/graphql';
+import { GraphQLISODateTime } from '@nestjs/graphql';
 
 import {
   GraphQLBoolean,
   GraphQLEnumType,
-  GraphQLFloat,
   GraphQLID,
   GraphQLInputObjectType,
   GraphQLInputType,
-  GraphQLInt,
   GraphQLList,
   GraphQLNonNull,
   GraphQLScalarType,
   GraphQLString,
   GraphQLType,
 } from 'graphql';
-import GraphQLJSON from 'graphql-type-json';
 
-import {
-  DateScalarMode,
-  NumberScalarMode,
-} from 'src/engine/api/graphql/workspace-schema-builder/interfaces/workspace-build-schema-optionts.interface';
+import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { OrderByDirectionType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/enum';
 import {
-  UUIDFilterType,
-  StringFilterType,
-  DatetimeFilterType,
+  BigFloatFilterType,
+  BooleanFilterType,
   DateFilterType,
   FloatFilterType,
-  IntFilterType,
-  BooleanFilterType,
-  BigFloatFilterType,
   RawJsonFilterType,
+  StringFilterType,
 } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/input';
-import { OrderByDirectionType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/enum';
-import { BigFloatScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { IDFilterType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/input/id-filter.input-type';
+import {
+  BigFloatScalarType,
+  UUIDScalarType,
+} from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { PositionScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/position.scalar';
+import { RawJSONScalar } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars/raw-json.scalar';
+import { getNumberFilterType } from 'src/engine/api/graphql/workspace-schema-builder/utils/get-number-filter-type.util';
+import { getNumberScalarType } from 'src/engine/api/graphql/workspace-schema-builder/utils/get-number-scalar-type.util';
+import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
 export interface TypeOptions<T = any> {
   nullable?: boolean;
   isArray?: boolean;
   arrayDepth?: number;
   defaultValue?: T;
+  settings?: FieldMetadataSettings<FieldMetadataType | 'default'>;
+  isIdField?: boolean;
 }
 
 @Injectable()
 export class TypeMapperService {
   mapToScalarType(
     fieldMetadataType: FieldMetadataType,
-    dateScalarMode: DateScalarMode = 'isoDate',
-    numberScalarMode: NumberScalarMode = 'float',
+    settings?: FieldMetadataSettings<FieldMetadataType | 'default'>,
+    isIdField?: boolean,
   ): GraphQLScalarType | undefined {
-    const dateScalar =
-      dateScalarMode === 'timestamp' ? GraphQLTimestamp : GraphQLISODateTime;
-    const numberScalar =
-      numberScalarMode === 'float' ? GraphQLFloat : GraphQLInt;
+    if (isIdField || settings?.isForeignKey) {
+      return GraphQLID;
+    }
 
-    // LINK and CURRENCY are handled in the factories because they are objects
     const typeScalarMapping = new Map<FieldMetadataType, GraphQLScalarType>([
-      [FieldMetadataType.UUID, GraphQLID],
+      [FieldMetadataType.UUID, UUIDScalarType],
       [FieldMetadataType.TEXT, GraphQLString],
       [FieldMetadataType.PHONE, GraphQLString],
       [FieldMetadataType.EMAIL, GraphQLString],
-      [FieldMetadataType.DATE_TIME, dateScalar],
+      [FieldMetadataType.DATE_TIME, GraphQLISODateTime],
+      [FieldMetadataType.DATE, GraphQLISODateTime],
       [FieldMetadataType.BOOLEAN, GraphQLBoolean],
-      [FieldMetadataType.NUMBER, numberScalar],
+      [
+        FieldMetadataType.NUMBER,
+        getNumberScalarType(
+          (settings as FieldMetadataSettings<FieldMetadataType.NUMBER>)
+            ?.dataType,
+        ),
+      ],
       [FieldMetadataType.NUMERIC, BigFloatScalarType],
-      [FieldMetadataType.PROBABILITY, GraphQLFloat],
-      [FieldMetadataType.RELATION, GraphQLID],
       [FieldMetadataType.POSITION, PositionScalarType],
-      [FieldMetadataType.RAW_JSON, GraphQLJSON],
+      [FieldMetadataType.RAW_JSON, RawJSONScalar],
+      [FieldMetadataType.RICH_TEXT, GraphQLString],
     ]);
 
     return typeScalarMapping.get(fieldMetadataType);
@@ -78,31 +82,35 @@ export class TypeMapperService {
 
   mapToFilterType(
     fieldMetadataType: FieldMetadataType,
-    dateScalarMode: DateScalarMode = 'isoDate',
-    numberScalarMode: NumberScalarMode = 'float',
+    settings?: FieldMetadataSettings<FieldMetadataType | 'default'>,
+    isIdField?: boolean,
   ): GraphQLInputObjectType | GraphQLScalarType | undefined {
-    const dateFilter =
-      dateScalarMode === 'timestamp' ? DatetimeFilterType : DateFilterType;
-    const numberScalar =
-      numberScalarMode === 'float' ? FloatFilterType : IntFilterType;
+    if (isIdField || settings?.isForeignKey) {
+      return IDFilterType;
+    }
 
-    // LINK and CURRENCY are handled in the factories because they are objects
     const typeFilterMapping = new Map<
       FieldMetadataType,
       GraphQLInputObjectType | GraphQLScalarType
     >([
-      [FieldMetadataType.UUID, UUIDFilterType],
+      [FieldMetadataType.UUID, IDFilterType],
       [FieldMetadataType.TEXT, StringFilterType],
       [FieldMetadataType.PHONE, StringFilterType],
       [FieldMetadataType.EMAIL, StringFilterType],
-      [FieldMetadataType.DATE_TIME, dateFilter],
+      [FieldMetadataType.DATE_TIME, DateFilterType],
+      [FieldMetadataType.DATE, DateFilterType],
       [FieldMetadataType.BOOLEAN, BooleanFilterType],
-      [FieldMetadataType.NUMBER, numberScalar],
+      [
+        FieldMetadataType.NUMBER,
+        getNumberFilterType(
+          (settings as FieldMetadataSettings<FieldMetadataType.NUMBER>)
+            ?.dataType,
+        ),
+      ],
       [FieldMetadataType.NUMERIC, BigFloatFilterType],
-      [FieldMetadataType.PROBABILITY, FloatFilterType],
-      [FieldMetadataType.RELATION, UUIDFilterType],
       [FieldMetadataType.POSITION, FloatFilterType],
       [FieldMetadataType.RAW_JSON, RawJsonFilterType],
+      [FieldMetadataType.RICH_TEXT, StringFilterType],
     ]);
 
     return typeFilterMapping.get(fieldMetadataType);
@@ -111,22 +119,22 @@ export class TypeMapperService {
   mapToOrderByType(
     fieldMetadataType: FieldMetadataType,
   ): GraphQLInputType | undefined {
-    // LINK and CURRENCY are handled in the factories because they are objects
     const typeOrderByMapping = new Map<FieldMetadataType, GraphQLEnumType>([
       [FieldMetadataType.UUID, OrderByDirectionType],
       [FieldMetadataType.TEXT, OrderByDirectionType],
       [FieldMetadataType.PHONE, OrderByDirectionType],
       [FieldMetadataType.EMAIL, OrderByDirectionType],
       [FieldMetadataType.DATE_TIME, OrderByDirectionType],
+      [FieldMetadataType.DATE, OrderByDirectionType],
       [FieldMetadataType.BOOLEAN, OrderByDirectionType],
       [FieldMetadataType.NUMBER, OrderByDirectionType],
       [FieldMetadataType.NUMERIC, OrderByDirectionType],
-      [FieldMetadataType.PROBABILITY, OrderByDirectionType],
       [FieldMetadataType.RATING, OrderByDirectionType],
       [FieldMetadataType.SELECT, OrderByDirectionType],
       [FieldMetadataType.MULTI_SELECT, OrderByDirectionType],
       [FieldMetadataType.POSITION, OrderByDirectionType],
       [FieldMetadataType.RAW_JSON, OrderByDirectionType],
+      [FieldMetadataType.RICH_TEXT, OrderByDirectionType],
     ]);
 
     return typeOrderByMapping.get(fieldMetadataType);
@@ -146,7 +154,7 @@ export class TypeMapperService {
       );
     }
 
-    if (!options.nullable && !options.defaultValue) {
+    if (options.nullable === false && options.defaultValue === null) {
       graphqlType = new GraphQLNonNull(graphqlType) as unknown as T;
     }
 

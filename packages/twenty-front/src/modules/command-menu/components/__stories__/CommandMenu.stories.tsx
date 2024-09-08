@@ -1,24 +1,28 @@
-import { useEffect } from 'react';
+import { action } from '@storybook/addon-actions';
 import { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
+import { useEffect } from 'react';
 import { useSetRecoilState } from 'recoil';
+import { IconCheckbox, IconNotes } from 'twenty-ui';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useCommandMenu } from '@/command-menu/hooks/useCommandMenu';
 import { CommandType } from '@/command-menu/types/Command';
-import { IconCheckbox, IconNotes } from '@/ui/display/icon';
 import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
 import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
+import { getCompaniesMock } from '~/testing/mock-data/companies';
 import {
   mockDefaultWorkspace,
   mockedWorkspaceMemberData,
 } from '~/testing/mock-data/users';
-import { sleep } from '~/testing/sleep';
+import { sleep } from '~/utils/sleep';
 
 import { CommandMenu } from '../CommandMenu';
+
+const companiesMock = getCompaniesMock();
 
 const openTimeout = 50;
 
@@ -46,7 +50,7 @@ const meta: Meta<typeof CommandMenu> = {
             label: 'Create Task',
             type: CommandType.Create,
             Icon: IconCheckbox,
-            onCommandClick: () => console.log('create task click'),
+            onCommandClick: action('create task click'),
           },
           {
             id: 'create-note',
@@ -54,7 +58,7 @@ const meta: Meta<typeof CommandMenu> = {
             label: 'Create Note',
             type: CommandType.Create,
             Icon: IconNotes,
-            onCommandClick: () => console.log('create note click'),
+            onCommandClick: action('create note click'),
           },
         ]);
         openCommandMenu();
@@ -78,7 +82,9 @@ export const DefaultWithoutSearch: Story = {
   play: async () => {
     const canvas = within(document.body);
 
-    expect(await canvas.findByText('Create Task')).toBeInTheDocument();
+    expect(
+      await canvas.findByText('Create Task', undefined, { timeout: 10000 }),
+    ).toBeInTheDocument();
     expect(await canvas.findByText('Go to People')).toBeInTheDocument();
     expect(await canvas.findByText('Go to Companies')).toBeInTheDocument();
     expect(await canvas.findByText('Go to Opportunities')).toBeInTheDocument();
@@ -93,9 +99,8 @@ export const MatchingPersonCompanyActivityCreateNavigate: Story = {
     const searchInput = await canvas.findByPlaceholderText('Search');
     await sleep(openTimeout);
     await userEvent.type(searchInput, 'n');
-    expect(await canvas.findByText('Alexandre Prot')).toBeInTheDocument();
-    expect(await canvas.findByText('Airbnb')).toBeInTheDocument();
-    expect(await canvas.findByText('My very first note')).toBeInTheDocument();
+    expect(await canvas.findByText('Linkedin')).toBeInTheDocument();
+    expect(await canvas.findByText(companiesMock[0].name)).toBeInTheDocument();
     expect(await canvas.findByText('Create Note')).toBeInTheDocument();
     expect(await canvas.findByText('Go to Companies')).toBeInTheDocument();
   },
@@ -118,17 +123,6 @@ export const AtleastMatchingOnePerson: Story = {
     const searchInput = await canvas.findByPlaceholderText('Search');
     await sleep(openTimeout);
     await userEvent.type(searchInput, 'alex');
-    expect(await canvas.findByText('Alexandre Prot')).toBeInTheDocument();
-  },
-};
-
-export const NotMatchingAnything: Story = {
-  play: async () => {
-    const canvas = within(document.body);
-    const searchInput = await canvas.findByPlaceholderText('Search');
-    await sleep(openTimeout);
-    await userEvent.type(searchInput, 'asdasdasd');
-    // FIXME: We need to fix the filters in graphql
-    // expect(await canvas.findByText('No results found')).toBeInTheDocument();
+    expect(await canvas.findByText('Sylvie Palmer')).toBeInTheDocument();
   },
 };

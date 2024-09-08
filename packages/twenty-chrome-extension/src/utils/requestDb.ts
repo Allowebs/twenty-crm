@@ -2,33 +2,35 @@ import { OperationVariables } from '@apollo/client';
 import { DocumentNode } from 'graphql';
 
 import getApolloClient from '~/utils/apolloClient';
+import { isDefined } from '~/utils/isDefined';
 
 export const callQuery = async <T>(
   query: DocumentNode,
   variables?: OperationVariables,
 ): Promise<T | null> => {
-  const client = await getApolloClient();
+  try {
+    const client = await getApolloClient();
+    const { data } = await client.query<T>({ query, variables });
 
-  const { data, error } = await client.query<T>({ query, variables });
-
-  if (error) throw new Error(error.message);
-
-  if (data) return data;
-
-  return null;
+    if (isDefined(data)) return data;
+    else return null;
+  } catch (error) {
+    return null;
+  }
 };
 
 export const callMutation = async <T>(
   mutation: DocumentNode,
   variables?: OperationVariables,
 ): Promise<T | null> => {
-  const client = await getApolloClient();
+  try {
+    const client = await getApolloClient();
 
-  const { data, errors } = await client.mutate<T>({ mutation, variables });
+    const { data } = await client.mutate<T>({ mutation, variables });
 
-  if (errors) throw new Error(errors[0].message);
-
-  if (data) return data;
-
-  return null;
+    if (isDefined(data)) return data;
+    else return null;
+  } catch (error) {
+    return null;
+  }
 };

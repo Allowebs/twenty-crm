@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@apollo/client';
 
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import {
   FieldFilter,
@@ -28,7 +29,7 @@ export const useFindManyObjectMetadataItems = ({
 
   const { enqueueSnackBar } = useSnackBar();
 
-  const { data, loading, error } = useQuery<
+  const { data, loading, error, refetch } = useQuery<
     ObjectMetadataItemsQuery,
     ObjectMetadataItemsQueryVariables
   >(FIND_MANY_OBJECT_METADATA_ITEMS, {
@@ -43,7 +44,7 @@ export const useFindManyObjectMetadataItems = ({
       enqueueSnackBar(
         `Error during useFindManyObjectMetadataItems, ${error.message}`,
         {
-          variant: 'error',
+          variant: SnackBarVariant.Error,
         },
       );
     },
@@ -59,5 +60,6 @@ export const useFindManyObjectMetadataItems = ({
     objectMetadataItems,
     loading,
     error,
+    refetch,
   };
 };

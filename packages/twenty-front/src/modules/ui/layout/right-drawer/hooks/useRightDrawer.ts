@@ -1,23 +1,24 @@
-import { useRecoilCallback, useRecoilState } from 'recoil';
+import { useRecoilCallback, useRecoilValue } from 'recoil';
 
+import { isRightDrawerMinimizedState } from '@/ui/layout/right-drawer/states/isRightDrawerMinimizedState';
 import { rightDrawerCloseEventState } from '@/ui/layout/right-drawer/states/rightDrawerCloseEventsState';
 
-import { isRightDrawerExpandedState } from '../states/isRightDrawerExpandedState';
 import { isRightDrawerOpenState } from '../states/isRightDrawerOpenState';
 import { rightDrawerPageState } from '../states/rightDrawerPageState';
 import { RightDrawerPages } from '../types/RightDrawerPages';
 
 export const useRightDrawer = () => {
-  const [isRightDrawerOpen] = useRecoilState(isRightDrawerOpenState);
+  const isRightDrawerOpen = useRecoilValue(isRightDrawerOpenState);
+  const isRightDrawerMinimized = useRecoilValue(isRightDrawerMinimizedState);
 
-  const [rightDrawerPage] = useRecoilState(rightDrawerPageState);
+  const rightDrawerPage = useRecoilValue(rightDrawerPageState);
 
   const openRightDrawer = useRecoilCallback(
     ({ set }) =>
       (rightDrawerPage: RightDrawerPages) => {
         set(rightDrawerPageState, rightDrawerPage);
-        set(isRightDrawerExpandedState, false);
         set(isRightDrawerOpenState, true);
+        set(isRightDrawerMinimizedState, false);
       },
     [],
   );
@@ -25,8 +26,26 @@ export const useRightDrawer = () => {
   const closeRightDrawer = useRecoilCallback(
     ({ set }) =>
       () => {
-        set(isRightDrawerExpandedState, false);
         set(isRightDrawerOpenState, false);
+        set(isRightDrawerMinimizedState, false);
+      },
+    [],
+  );
+
+  const minimizeRightDrawer = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(isRightDrawerOpenState, true);
+        set(isRightDrawerMinimizedState, true);
+      },
+    [],
+  );
+
+  const maximizeRightDrawer = useRecoilCallback(
+    ({ set }) =>
+      () => {
+        set(isRightDrawerMinimizedState, false);
+        set(isRightDrawerOpenState, true);
       },
     [],
   );
@@ -50,8 +69,11 @@ export const useRightDrawer = () => {
   return {
     rightDrawerPage,
     isRightDrawerOpen,
+    isRightDrawerMinimized,
     openRightDrawer,
     closeRightDrawer,
+    minimizeRightDrawer,
+    maximizeRightDrawer,
     isSameEventThanRightDrawerClose,
   };
 };

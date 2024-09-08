@@ -1,15 +1,12 @@
 import {
   Field,
   HideField,
-  ID,
   ObjectType,
   registerEnumType,
 } from '@nestjs/graphql';
 
-import { GraphQLJSON } from 'graphql-type-json';
 import {
   Authorize,
-  BeforeDeleteOne,
   FilterableField,
   IDField,
   QueryOptions,
@@ -25,16 +22,19 @@ import {
   IsUUID,
   Validate,
 } from 'class-validator';
+import { GraphQLJSON } from 'graphql-type-json';
 
-import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
 import { FieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-default-value.interface';
+import { FieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-options.interface';
+import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
 
-import { RelationMetadataDTO } from 'src/engine/metadata-modules/relation-metadata/dtos/relation-metadata.dto';
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { IsValidMetadataName } from 'src/engine/decorators/metadata/is-valid-metadata-name.decorator';
 import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { BeforeDeleteOneField } from 'src/engine/metadata-modules/field-metadata/hooks/before-delete-one-field.hook';
 import { IsFieldMetadataDefaultValue } from 'src/engine/metadata-modules/field-metadata/validators/is-field-metadata-default-value.validator';
 import { IsFieldMetadataOptions } from 'src/engine/metadata-modules/field-metadata/validators/is-field-metadata-options.validator';
-import { IsValidMetadataName } from 'src/engine/decorators/metadata/is-valid-metadata-name.decorator';
+import { ObjectMetadataDTO } from 'src/engine/metadata-modules/object-metadata/dtos/object-metadata.dto';
+import { RelationMetadataDTO } from 'src/engine/metadata-modules/relation-metadata/dtos/relation-metadata.dto';
 
 registerEnumType(FieldMetadataType, {
   name: 'FieldMetadataType',
@@ -52,11 +52,13 @@ registerEnumType(FieldMetadataType, {
   disableSort: true,
   maxResultsSize: 1000,
 })
-@BeforeDeleteOne(BeforeDeleteOneField)
 @Relation('toRelationMetadata', () => RelationMetadataDTO, {
   nullable: true,
 })
 @Relation('fromRelationMetadata', () => RelationMetadataDTO, {
+  nullable: true,
+})
+@Relation('object', () => ObjectMetadataDTO, {
   nullable: true,
 })
 export class FieldMetadataDTO<
@@ -64,7 +66,7 @@ export class FieldMetadataDTO<
 > {
   @IsUUID()
   @IsNotEmpty()
-  @IDField(() => ID)
+  @IDField(() => UUIDScalarType)
   id: string;
 
   @IsEnum(FieldMetadataType)
@@ -122,6 +124,10 @@ export class FieldMetadataDTO<
   @IsOptional()
   @Field(() => GraphQLJSON, { nullable: true })
   options?: FieldMetadataOptions<T>;
+
+  @IsOptional()
+  @Field(() => GraphQLJSON, { nullable: true })
+  settings?: FieldMetadataSettings<T>;
 
   @HideField()
   workspaceId: string;

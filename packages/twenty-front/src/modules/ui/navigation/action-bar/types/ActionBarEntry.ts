@@ -1,10 +1,5 @@
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-import { MenuItemAccent } from '@/ui/navigation/menu-item/types/MenuItemAccent';
+import { ContextMenuEntry } from '@/ui/navigation/context-menu/types/ContextMenuEntry';
 
-export type ActionBarEntry = {
-  label: string;
-  Icon: IconComponent;
-  accent?: MenuItemAccent;
-  onClick?: () => void;
+export type ActionBarEntry = ContextMenuEntry & {
   subActions?: ActionBarEntry[];
 };

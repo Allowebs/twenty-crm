@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Relation,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
@@ -23,13 +24,13 @@ export class BillingSubscriptionItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'timestamptz' })
   deletedAt?: Date;
 
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamp with time zone' })
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @Column({ nullable: false })
@@ -42,7 +43,7 @@ export class BillingSubscriptionItem {
       onDelete: 'CASCADE',
     },
   )
-  billingSubscription: BillingSubscription;
+  billingSubscription: Relation<BillingSubscription>;
 
   @Column({ nullable: false })
   stripeProductId: string;

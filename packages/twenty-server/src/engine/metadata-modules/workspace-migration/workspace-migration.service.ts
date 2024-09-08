@@ -18,18 +18,34 @@ export class WorkspaceMigrationService {
   /**
    * Get all pending migrations for a given workspaceId
    *
-   * @param workspaceId: string
    * @returns Promise<WorkspaceMigration[]>
+   * @param workspaceId
    */
   public async getPendingMigrations(
     workspaceId: string,
   ): Promise<WorkspaceMigrationEntity[]> {
-    return await this.workspaceMigrationRepository.find({
+    const pendingMigrations = await this.workspaceMigrationRepository.find({
       order: { createdAt: 'ASC', name: 'ASC' },
       where: {
         appliedAt: IsNull(),
         workspaceId,
       },
+    });
+
+    const typeOrder = { delete: 1, update: 2, create: 3 };
+
+    const getType = (name: string) =>
+      name.split('-')[1] as keyof typeof typeOrder;
+
+    return pendingMigrations.sort((a, b) => {
+      if (a.createdAt.getTime() !== b.createdAt.getTime()) {
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      }
+
+      return (
+        (typeOrder[getType(a.name)] || 4) - (typeOrder[getType(b.name)] || 4) ||
+        a.name.localeCompare(b.name)
+      );
     });
   }
 
@@ -37,8 +53,8 @@ export class WorkspaceMigrationService {
    * Set appliedAt as current date for a given migration.
    * Should be called once the migration has been applied
    *
-   * @param workspaceId: string
-   * @param migration: WorkspaceMigration
+   * @param workspaceId
+   * @param migration
    */
   public async setAppliedAtForMigration(
     workspaceId: string,
@@ -53,6 +69,7 @@ export class WorkspaceMigrationService {
   /**
    * Create a new pending migration for a given workspaceId and expected changes
    *
+   * @param name
    * @param workspaceId
    * @param migrations
    */
@@ -61,7 +78,7 @@ export class WorkspaceMigrationService {
     workspaceId: string,
     migrations: WorkspaceMigrationTableAction[],
   ) {
-    await this.workspaceMigrationRepository.save({
+    return this.workspaceMigrationRepository.save({
       name,
       migrations,
       workspaceId,
@@ -69,7 +86,11 @@ export class WorkspaceMigrationService {
     });
   }
 
-  public async delete(workspaceId: string) {
+  public async deleteAllWithinWorkspace(workspaceId: string) {
     await this.workspaceMigrationRepository.delete({ workspaceId });
+  }
+
+  public async deleteById(id: string) {
+    await this.workspaceMigrationRepository.delete({ id });
   }
 }

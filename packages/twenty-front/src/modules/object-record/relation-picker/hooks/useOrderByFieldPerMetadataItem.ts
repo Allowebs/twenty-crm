@@ -1,5 +1,5 @@
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { getObjectOrderByField } from '@/object-metadata/utils/getObjectOrderByField';
+import { getOrderByFieldForObjectMetadataItem } from '@/object-metadata/utils/getObjectOrderByField';
 import { isDefined } from '~/utils/isDefined';
 import { capitalize } from '~/utils/string/capitalize';
 
@@ -11,13 +11,12 @@ export const useOrderByFieldPerMetadataItem = ({
   const orderByFieldPerMetadataItem = Object.fromEntries(
     objectMetadataItems
       .map((objectMetadataItem) => {
-        const orderByField = getObjectOrderByField(objectMetadataItem);
+        const orderByField =
+          getOrderByFieldForObjectMetadataItem(objectMetadataItem);
 
         return [
           `orderBy${capitalize(objectMetadataItem.nameSingular)}`,
-          {
-            ...orderByField,
-          },
+          [...orderByField],
         ];
       })
       .filter(isDefined),

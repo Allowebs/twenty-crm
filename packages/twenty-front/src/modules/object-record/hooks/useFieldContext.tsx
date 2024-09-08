@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { formatFieldMetadataItemAsColumnDefinition } from '@/object-metadata/utils/formatFieldMetadataItemAsColumnDefinition';
+import { getBasePathToShowPage } from '@/object-metadata/utils/getBasePathToShowPage';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import {
   FieldContext,
@@ -18,6 +19,7 @@ export const useFieldContext = ({
   objectNameSingular,
   objectRecordId,
   customUseUpdateOneObjectHook,
+  overridenIsFieldEmpty,
 }: {
   clearable?: boolean;
   fieldMetadataName: string;
@@ -26,8 +28,13 @@ export const useFieldContext = ({
   objectNameSingular: string;
   objectRecordId: string;
   customUseUpdateOneObjectHook?: RecordUpdateHook;
+  overridenIsFieldEmpty?: boolean;
 }) => {
-  const { basePathToShowPage, objectMetadataItem } = useObjectMetadataItem({
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular,
+  });
+
+  const basePathToShowPage = getBasePathToShowPage({
     objectNameSingular,
   });
 
@@ -59,18 +66,21 @@ export const useFieldContext = ({
               basePathToShowPage: isLabelIdentifier
                 ? basePathToShowPage
                 : undefined,
-              entityId: objectRecordId,
+              recordId: objectRecordId,
               recoilScopeId: objectRecordId + fieldMetadataItem.id,
               isLabelIdentifier,
               fieldDefinition: formatFieldMetadataItemAsColumnDefinition({
                 field: fieldMetadataItem,
+                showLabel: true,
                 position: fieldPosition,
                 objectMetadataItem,
+                labelWidth: 90,
               }),
               useUpdateRecord:
                 customUseUpdateOneObjectHook ?? useUpdateOneObjectMutation,
               hotkeyScope: InlineCellHotkeyScope.InlineCell,
               clearable,
+              overridenIsFieldEmpty,
             }}
           >
             {children}

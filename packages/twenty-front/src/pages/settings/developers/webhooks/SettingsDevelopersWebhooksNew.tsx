@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { H2Title, IconCode } from 'twenty-ui';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { SaveAndCancelButtons } from '@/settings/components/SaveAndCancelButtons/SaveAndCancelButtons';
-import { SettingsHeaderContainer } from '@/settings/components/SettingsHeaderContainer';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { Webhook } from '@/settings/developers/types/webhook/Webhook';
-import { IconSettings } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
 import { TextInput } from '@/ui/input/components/TextInput';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
 import { Section } from '@/ui/layout/section/components/Section';
 import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { isURL } from '~/utils/is-url';
+import { isValidUrl } from '~/utils/url/isValidUrl';
 
 export const SettingsDevelopersWebhooksNew = () => {
   const navigate = useNavigate();
@@ -24,18 +22,19 @@ export const SettingsDevelopersWebhooksNew = () => {
     targetUrl: '',
     operation: '*.*',
   });
-  const [errorMessage, setErrorMessage] = useState<string | undefined>();
+  const [isTargetUrlValid, setIsTargetUrlValid] = useState(true);
+
   const { createOneRecord: createOneWebhook } = useCreateOneRecord<Webhook>({
     objectNameSingular: CoreObjectNameSingular.Webhook,
   });
+
+  const handleValidate = async (value: string) => {
+    const trimmedUrl = value.trim();
+
+    setIsTargetUrlValid(isValidUrl(trimmedUrl));
+  };
+
   const handleSave = async () => {
-    setErrorMessage(undefined);
-
-    if (!isURL(formValues.targetUrl)) {
-      setErrorMessage('Invalid webhook URL');
-      return;
-    }
-
     const newWebhook = await createOneWebhook?.(formValues);
 
     if (!newWebhook) {
@@ -43,25 +42,32 @@ export const SettingsDevelopersWebhooksNew = () => {
     }
     navigate(`/settings/developers/webhooks/${newWebhook.id}`);
   };
-  const canSave = !!formValues.targetUrl && createOneWebhook;
+
+  const canSave =
+    !!formValues.targetUrl && isTargetUrlValid && createOneWebhook;
+
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+    <SubMenuTopBarContainer
+      Icon={IconCode}
+      title={
+        <Breadcrumb
+          links={[
+            { children: 'Developers', href: '/settings/developers' },
+            { children: 'New webhook' },
+          ]}
+        />
+      }
+      actionButton={
+        <SaveAndCancelButtons
+          isSaveDisabled={!canSave}
+          onCancel={() => {
+            navigate('/settings/developers');
+          }}
+          onSave={handleSave}
+        />
+      }
+    >
       <SettingsPageContainer>
-        <SettingsHeaderContainer>
-          <Breadcrumb
-            links={[
-              { children: 'Developers', href: '/settings/developers' },
-              { children: 'New webhook' },
-            ]}
-          />
-          <SaveAndCancelButtons
-            isSaveDisabled={!canSave}
-            onCancel={() => {
-              navigate('/settings/developers');
-            }}
-            onSave={handleSave}
-          />
-        </SettingsHeaderContainer>
         <Section>
           <H2Title
             title="Endpoint URL"
@@ -70,6 +76,7 @@ export const SettingsDevelopersWebhooksNew = () => {
           <TextInput
             placeholder="URL"
             value={formValues.targetUrl}
+            error={!isTargetUrlValid ? 'Please enter a valid URL' : undefined}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSave();
@@ -80,8 +87,8 @@ export const SettingsDevelopersWebhooksNew = () => {
                 ...prevState,
                 targetUrl: value,
               }));
+              handleValidate(value);
             }}
-            error={errorMessage}
             fullWidth
           />
         </Section>

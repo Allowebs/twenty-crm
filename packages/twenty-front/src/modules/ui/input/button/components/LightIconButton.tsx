@@ -1,8 +1,7 @@
 import { ComponentProps, MouseEvent } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconComponent } from 'twenty-ui';
 
 export type LightIconButtonAccent = 'secondary' | 'tertiary';
 export type LightIconButtonSize = 'small' | 'medium';
@@ -61,8 +60,8 @@ const StyledButton = styled.button<
   transition: background 0.1s ease;
 
   white-space: nowrap;
-
   width: ${({ size }) => (size === 'small' ? '24px' : '32px')};
+  min-width: ${({ size }) => (size === 'small' ? '24px' : '32px')};
 
   &:hover {
     background: ${({ theme, disabled }) =>
@@ -106,7 +105,7 @@ export const LightIconButton = ({
       active={active}
       title={title}
     >
-      {Icon && <Icon size={theme.icon.size.md} stroke={theme.icon.stroke.sm} />}
+      {Icon && <Icon size={theme.icon.size.sm} />}
     </StyledButton>
   );
 };

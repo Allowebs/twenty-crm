@@ -1,4 +1,5 @@
-import { IconBook2 } from '@/ui/display/icon';
+import { IconBook2 } from 'twenty-ui';
+
 import { Button } from '@/ui/input/button/components/Button';
 
 export const SettingsReadDocumentationButton = () => {
@@ -9,9 +10,8 @@ export const SettingsReadDocumentationButton = () => {
       accent="default"
       size="small"
       Icon={IconBook2}
-      onClick={() => {
-        window.open('https://docs.twenty.com');
-      }}
+      to={'https://docs.twenty.com'}
+      target="_blank"
     ></Button>
   );
 };

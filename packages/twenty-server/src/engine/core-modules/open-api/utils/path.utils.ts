@@ -1,14 +1,42 @@
 import { OpenAPIV3_1 } from 'openapi-types';
 
-import { capitalize } from 'src/utils/capitalize';
-import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import {
+  getArrayRequestBody,
+  getFindDuplicatesRequestBody,
+  getRequestBody,
+  getUpdateRequestBody,
+} from 'src/engine/core-modules/open-api/utils/request-body.utils';
+import {
+  getCreateManyResponse201,
+  getCreateOneResponse201,
   getDeleteResponse200,
+  getFindDuplicatesResponse200,
+  getFindManyResponse200,
+  getFindOneResponse200,
   getJsonResponse,
-  getManyResultResponse200,
-  getSingleResultSuccessResponse,
+  getUpdateOneResponse200,
 } from 'src/engine/core-modules/open-api/utils/responses.utils';
-import { getRequestBody } from 'src/engine/core-modules/open-api/utils/request-body.utils';
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { capitalize } from 'src/utils/capitalize';
+
+export const computeBatchPath = (
+  item: ObjectMetadataEntity,
+): OpenAPIV3_1.PathItemObject => {
+  return {
+    post: {
+      tags: [item.namePlural],
+      summary: `Create Many ${item.namePlural}`,
+      operationId: `createMany${capitalize(item.namePlural)}`,
+      parameters: [{ $ref: '#/components/parameters/depth' }],
+      requestBody: getArrayRequestBody(capitalize(item.nameSingular)),
+      responses: {
+        '201': getCreateManyResponse201(item),
+        '400': { $ref: '#/components/responses/400' },
+        '401': { $ref: '#/components/responses/401' },
+      },
+    },
+  } as OpenAPIV3_1.PathItemObject;
+};
 
 export const computeManyResultPath = (
   item: ObjectMetadataEntity,
@@ -17,17 +45,18 @@ export const computeManyResultPath = (
     get: {
       tags: [item.namePlural],
       summary: `Find Many ${item.namePlural}`,
-      description: `**order_by**, **filter**, **limit**, **depth** or **last_cursor** can be provided to request your **${item.namePlural}**`,
+      description: `**order_by**, **filter**, **limit**, **depth**, **starting_after** or **ending_before** can be provided to request your **${item.namePlural}**`,
       operationId: `findMany${capitalize(item.namePlural)}`,
       parameters: [
         { $ref: '#/components/parameters/orderBy' },
         { $ref: '#/components/parameters/filter' },
         { $ref: '#/components/parameters/limit' },
         { $ref: '#/components/parameters/depth' },
-        { $ref: '#/components/parameters/lastCursor' },
+        { $ref: '#/components/parameters/startingAfter' },
+        { $ref: '#/components/parameters/endingBefore' },
       ],
       responses: {
-        '200': getManyResultResponse200(item),
+        '200': getFindManyResponse200(item),
         '400': { $ref: '#/components/responses/400' },
         '401': { $ref: '#/components/responses/401' },
       },
@@ -37,9 +66,9 @@ export const computeManyResultPath = (
       summary: `Create One ${item.nameSingular}`,
       operationId: `createOne${capitalize(item.nameSingular)}`,
       parameters: [{ $ref: '#/components/parameters/depth' }],
-      requestBody: getRequestBody(item),
+      requestBody: getRequestBody(capitalize(item.nameSingular)),
       responses: {
-        '201': getSingleResultSuccessResponse(item),
+        '201': getCreateOneResponse201(item),
         '400': { $ref: '#/components/responses/400' },
         '401': { $ref: '#/components/responses/401' },
       },
@@ -61,7 +90,7 @@ export const computeSingleResultPath = (
         { $ref: '#/components/parameters/depth' },
       ],
       responses: {
-        '200': getSingleResultSuccessResponse(item),
+        '200': getFindOneResponse200(item),
         '400': { $ref: '#/components/responses/400' },
         '401': { $ref: '#/components/responses/401' },
       },
@@ -77,17 +106,17 @@ export const computeSingleResultPath = (
         '401': { $ref: '#/components/responses/401' },
       },
     },
-    put: {
+    patch: {
       tags: [item.namePlural],
-      summary: `Update One ${item.namePlural}`,
+      summary: `Update One ${item.nameSingular}`,
       operationId: `UpdateOne${capitalize(item.nameSingular)}`,
       parameters: [
         { $ref: '#/components/parameters/idPath' },
         { $ref: '#/components/parameters/depth' },
       ],
-      requestBody: getRequestBody(item),
+      requestBody: getUpdateRequestBody(capitalize(item.nameSingular)),
       responses: {
-        '200': getSingleResultSuccessResponse(item),
+        '200': getUpdateOneResponse200(item),
         '400': { $ref: '#/components/responses/400' },
         '401': { $ref: '#/components/responses/401' },
       },
@@ -110,6 +139,26 @@ export const computeOpenApiPath = (
       ],
       responses: {
         '200': getJsonResponse(),
+      },
+    },
+  } as OpenAPIV3_1.PathItemObject;
+};
+
+export const computeDuplicatesResultPath = (
+  item: ObjectMetadataEntity,
+): OpenAPIV3_1.PathItemObject => {
+  return {
+    post: {
+      tags: [item.namePlural],
+      summary: `Find ${item.nameSingular} Duplicates`,
+      description: `**depth** can be provided to request your **${item.nameSingular}**`,
+      operationId: `find${capitalize(item.nameSingular)}Duplicates`,
+      parameters: [{ $ref: '#/components/parameters/depth' }],
+      requestBody: getFindDuplicatesRequestBody(capitalize(item.nameSingular)),
+      responses: {
+        '200': getFindDuplicatesResponse200(item),
+        '400': { $ref: '#/components/responses/400' },
+        '401': { $ref: '#/components/responses/401' },
       },
     },
   } as OpenAPIV3_1.PathItemObject;

@@ -1,267 +1,159 @@
 import { Injectable } from '@nestjs/common';
 
-import groupBy from 'lodash.groupby';
+import omit from 'lodash.omit';
+import { Any } from 'typeorm';
 
 import { TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE } from 'src/engine/core-modules/calendar/constants/calendar.constants';
-import { TimelineCalendarEventAttendee } from 'src/engine/core-modules/calendar/dtos/timeline-calendar-event-attendee.dto';
-import {
-  TimelineCalendarEvent,
-  TimelineCalendarEventVisibility,
-} from 'src/engine/core-modules/calendar/dtos/timeline-calendar-event.dto';
 import { TimelineCalendarEventsWithTotal } from 'src/engine/core-modules/calendar/dtos/timeline-calendar-events-with-total.dto';
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
-import { ObjectRecord } from 'src/engine/workspace-manager/workspace-sync-metadata/types/object-record';
-import { CalendarEventAttendeeObjectMetadata } from 'src/modules/calendar/standard-objects/calendar-event-attendee.object-metadata';
+import { TwentyORMManager } from 'src/engine/twenty-orm/twenty-orm.manager';
+import { CalendarChannelVisibility } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
+import { CalendarEventWorkspaceEntity } from 'src/modules/calendar/common/standard-objects/calendar-event.workspace-entity';
+import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 
-type TimelineCalendarEventAttendeeWithPersonInformation =
-  ObjectRecord<CalendarEventAttendeeObjectMetadata> & {
-    personFirstName: string;
-    personLastName: string;
-    personAvatarUrl: string;
-    workspaceMemberFirstName: string;
-    workspaceMemberLastName: string;
-    workspaceMemberAvatarUrl: string;
-  };
 @Injectable()
 export class TimelineCalendarEventService {
-  constructor(
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
-  ) {}
+  constructor(private readonly twentyORMManager: TwentyORMManager) {}
 
+  // TODO: Align return type with the entities to avoid mapping
   async getCalendarEventsFromPersonIds(
-    workspaceMemberId: string,
-    workspaceId: string,
     personIds: string[],
-    page: number = 1,
+    page = 1,
     pageSize: number = TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE,
   ): Promise<TimelineCalendarEventsWithTotal> {
     const offset = (page - 1) * pageSize;
 
-    const dataSourceSchema =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
-
-    const calendarEvents: Omit<TimelineCalendarEvent, 'attendees'>[] =
-      await this.workspaceDataSourceService.executeRawQuery(
-        `SELECT
-            "calendarEvent".*
-        FROM
-            ${dataSourceSchema}."calendarEvent" "calendarEvent"
-        LEFT JOIN
-            ${dataSourceSchema}."calendarEventAttendee" "calendarEventAttendee" ON "calendarEvent".id = "calendarEventAttendee"."calendarEventId"
-        LEFT JOIN
-            ${dataSourceSchema}."person" "person" ON "calendarEventAttendee"."personId" = "person".id
-        WHERE
-            "calendarEventAttendee"."personId" = ANY($1)
-        GROUP BY
-            "calendarEvent".id
-        ORDER BY
-            "calendarEvent"."startsAt" DESC
-        LIMIT $2
-        OFFSET $3`,
-        [personIds, pageSize, offset],
-        workspaceId,
+    const calendarEventRepository =
+      await this.twentyORMManager.getRepository<CalendarEventWorkspaceEntity>(
+        'calendarEvent',
       );
 
-    if (!calendarEvents) {
+    const calendarEventIds = await calendarEventRepository.find({
+      where: {
+        calendarEventParticipants: {
+          personId: Any(personIds),
+        },
+      },
+      select: {
+        id: true,
+        startsAt: true,
+      },
+      skip: offset,
+      take: pageSize,
+      order: {
+        startsAt: 'DESC',
+      },
+    });
+
+    const ids = calendarEventIds.map(({ id }) => id);
+
+    if (ids.length <= 0) {
       return {
         totalNumberOfCalendarEvents: 0,
         timelineCalendarEvents: [],
       };
     }
 
-    const calendarEventAttendees: TimelineCalendarEventAttendeeWithPersonInformation[] =
-      await this.workspaceDataSourceService.executeRawQuery(
-        `SELECT
-            "calendarEventAttendee".*,
-            "person"."nameFirstName" as "personFirstName",
-            "person"."nameLastName" as "personLastName",
-            "person"."avatarUrl" as "personAvatarUrl",
-            "workspaceMember"."nameFirstName" as "workspaceMemberFirstName",
-            "workspaceMember"."nameLastName" as "workspaceMemberLastName",
-            "workspaceMember"."avatarUrl" as "workspaceMemberAvatarUrl"
-        FROM
-            ${dataSourceSchema}."calendarEventAttendee" "calendarEventAttendee"
-        LEFT JOIN
-            ${dataSourceSchema}."person" "person" ON "calendarEventAttendee"."personId" = "person".id
-        LEFT JOIN
-            ${dataSourceSchema}."workspaceMember" "workspaceMember" ON "calendarEventAttendee"."workspaceMemberId" = "workspaceMember".id
-        WHERE
-            "calendarEventAttendee"."calendarEventId" = ANY($1)`,
-        [calendarEvents.map((event) => event.id)],
-        workspaceId,
+    // We've split the query into two parts, because we want to fetch all the participants without any filtering
+    const [events, total] = await calendarEventRepository.findAndCount({
+      where: {
+        id: Any(ids),
+      },
+      relations: {
+        calendarEventParticipants: {
+          person: true,
+          workspaceMember: true,
+        },
+        calendarChannelEventAssociations: {
+          calendarChannel: true,
+        },
+      },
+    });
+
+    // Keep events in the same order as they ids were returned
+    const orderedEvents = events.sort(
+      (a, b) => ids.indexOf(a.id) - ids.indexOf(b.id),
+    );
+
+    const timelineCalendarEvents = orderedEvents.map((event) => {
+      const participants = event.calendarEventParticipants.map(
+        (participant) => ({
+          calendarEventId: event.id,
+          personId: participant.personId ?? null,
+          workspaceMemberId: participant.workspaceMemberId ?? null,
+          firstName:
+            participant.person?.name?.firstName ||
+            participant.workspaceMember?.name.firstName ||
+            '',
+          lastName:
+            participant.person?.name?.lastName ||
+            participant.workspaceMember?.name.lastName ||
+            '',
+          displayName:
+            participant.person?.name?.firstName ||
+            participant.person?.name?.lastName ||
+            participant.workspaceMember?.name.firstName ||
+            participant.workspaceMember?.name.lastName ||
+            '',
+          avatarUrl:
+            participant.person?.avatarUrl ||
+            participant.workspaceMember?.avatarUrl ||
+            '',
+          handle: participant.handle,
+        }),
       );
-
-    const formattedCalendarEventAttendees: TimelineCalendarEventAttendee[] =
-      calendarEventAttendees.map((attendee) => {
-        const firstName =
-          attendee.personFirstName || attendee.workspaceMemberFirstName || '';
-
-        const lastName =
-          attendee.personLastName || attendee.workspaceMemberLastName || '';
-
-        const displayName =
-          firstName || attendee.displayName || attendee.handle;
-
-        const avatarUrl =
-          attendee.personAvatarUrl || attendee.workspaceMemberAvatarUrl || '';
-
-        return {
-          calendarEventId: attendee.calendarEventId,
-          personId: attendee.personId,
-          workspaceMemberId: attendee.workspaceMemberId,
-          firstName,
-          lastName,
-          displayName,
-          avatarUrl,
-          handle: attendee.handle,
-        };
-      });
-
-    const calendarEventAttendeesByEventId: {
-      [calendarEventId: string]: TimelineCalendarEventAttendee[];
-    } = groupBy(formattedCalendarEventAttendees, 'calendarEventId');
-
-    const totalNumberOfCalendarEvents: { count: number }[] =
-      await this.workspaceDataSourceService.executeRawQuery(
-        `
-      SELECT
-          COUNT(DISTINCT "calendarEventId")
-      FROM
-          ${dataSourceSchema}."calendarEventAttendee" "calendarEventAttendee"
-      WHERE
-          "calendarEventAttendee"."personId" = ANY($1)
-      `,
-        [personIds],
-        workspaceId,
-      );
-
-    const timelineCalendarEvents = calendarEvents.map((event) => {
-      const attendees = calendarEventAttendeesByEventId[event.id] || [];
+      const visibility = event.calendarChannelEventAssociations.some(
+        (association) => association.calendarChannel.visibility === 'METADATA',
+      )
+        ? CalendarChannelVisibility.METADATA
+        : CalendarChannelVisibility.SHARE_EVERYTHING;
 
       return {
-        ...event,
-        attendees,
+        ...omit(event, [
+          'calendarEventParticipants',
+          'calendarChannelEventAssociations',
+        ]),
+        startsAt: event.startsAt as unknown as Date,
+        endsAt: event.endsAt as unknown as Date,
+        participants,
+        visibility,
       };
     });
 
-    const calendarEventIdsWithWorkspaceMemberInAttendees =
-      await this.workspaceDataSourceService.executeRawQuery(
-        `
-      SELECT
-          "calendarEventId"
-      FROM
-          ${dataSourceSchema}."calendarEventAttendee" "calendarEventAttendee"
-      WHERE
-          "calendarEventAttendee"."workspaceMemberId" = $1
-      `,
-        [workspaceMemberId],
-        workspaceId,
-      );
-
-    const calendarEventIdsWithWorkspaceMemberInAttendeesFormatted =
-      calendarEventIdsWithWorkspaceMemberInAttendees.map(
-        (event: { calendarEventId: string }) => event.calendarEventId,
-      );
-
-    const calendarEventIdsToFetchVisibilityFor = timelineCalendarEvents
-      .filter(
-        (event) =>
-          !calendarEventIdsWithWorkspaceMemberInAttendeesFormatted.includes(
-            event.id,
-          ),
-      )
-      .map((event) => event.id);
-
-    const calendarEventIdsForWhichVisibilityIsMetadata:
-      | {
-          id: string;
-        }[]
-      | undefined = await this.workspaceDataSourceService.executeRawQuery(
-      `
-      SELECT
-          "calendarChannelEventAssociation"."calendarEventId" AS "id"
-      FROM
-          ${dataSourceSchema}."calendarChannel" "calendarChannel"
-      LEFT JOIN
-          ${dataSourceSchema}."calendarChannelEventAssociation" "calendarChannelEventAssociation" ON "calendarChannel".id = "calendarChannelEventAssociation"."calendarChannelId"
-      WHERE
-          "calendarChannelEventAssociation"."calendarEventId" = ANY($1)
-      AND
-          "calendarChannel"."visibility" = 'METADATA'
-      `,
-      [calendarEventIdsToFetchVisibilityFor],
-      workspaceId,
-    );
-
-    if (!calendarEventIdsForWhichVisibilityIsMetadata) {
-      throw new Error('Failed to fetch calendar event visibility');
-    }
-
-    const calendarEventIdsForWhichVisibilityIsMetadataMap = new Map(
-      calendarEventIdsForWhichVisibilityIsMetadata.map((event) => [
-        event.id,
-        TimelineCalendarEventVisibility.METADATA,
-      ]),
-    );
-
-    timelineCalendarEvents.forEach((event) => {
-      event.visibility =
-        calendarEventIdsForWhichVisibilityIsMetadataMap.get(event.id) ??
-        TimelineCalendarEventVisibility.SHARE_EVERYTHING;
-
-      if (event.visibility === TimelineCalendarEventVisibility.METADATA) {
-        event.title = '';
-        event.description = '';
-        event.location = '';
-        event.conferenceSolution = '';
-        event.conferenceLink.label = '';
-        event.conferenceLink.url = '';
-      }
-    });
-
     return {
-      totalNumberOfCalendarEvents: totalNumberOfCalendarEvents[0].count,
+      totalNumberOfCalendarEvents: total,
       timelineCalendarEvents,
     };
   }
 
   async getCalendarEventsFromCompanyId(
-    workspaceMemberId: string,
-    workspaceId: string,
     companyId: string,
-    page: number = 1,
+    page = 1,
     pageSize: number = TIMELINE_CALENDAR_EVENTS_DEFAULT_PAGE_SIZE,
   ): Promise<TimelineCalendarEventsWithTotal> {
-    const dataSourceSchema =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
+    const personRepository =
+      await this.twentyORMManager.getRepository<PersonWorkspaceEntity>(
+        'person',
+      );
 
-    const personIds = await this.workspaceDataSourceService.executeRawQuery(
-      `
-        SELECT 
-            p."id"
-        FROM
-            ${dataSourceSchema}."person" p
-        WHERE
-            p."companyId" = $1
-        `,
-      [companyId],
-      workspaceId,
-    );
+    const personIds = await personRepository.find({
+      where: {
+        companyId,
+      },
+      select: {
+        id: true,
+      },
+    });
 
-    if (!personIds) {
+    if (personIds.length <= 0) {
       return {
         totalNumberOfCalendarEvents: 0,
         timelineCalendarEvents: [],
       };
     }
 
-    const formattedPersonIds = personIds.map(
-      (personId: { id: string }) => personId.id,
-    );
+    const formattedPersonIds = personIds.map(({ id }) => id);
 
     const messageThreads = await this.getCalendarEventsFromPersonIds(
-      workspaceMemberId,
-      workspaceId,
       formattedPersonIds,
       page,
       pageSize,

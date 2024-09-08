@@ -1,7 +1,7 @@
 import { ModalWrapper } from '@/spreadsheet-import/components/ModalWrapper';
-import { Providers } from '@/spreadsheet-import/components/Providers';
-import { Steps } from '@/spreadsheet-import/steps/components/Steps';
-import { SpreadsheetOptions as SpreadsheetImportProps } from '@/spreadsheet-import/types';
+import { ReactSpreadsheetImportContextProvider } from '@/spreadsheet-import/components/ReactSpreadsheetImportContextProvider';
+import { SpreadsheetImportStepperContainer } from '@/spreadsheet-import/steps/components/SpreadsheetImportStepperContainer';
+import { SpreadsheetImportDialogOptions as SpreadsheetImportProps } from '@/spreadsheet-import/types';
 
 export const defaultSpreadsheetImportProps: Partial<
   SpreadsheetImportProps<any>
@@ -10,7 +10,10 @@ export const defaultSpreadsheetImportProps: Partial<
   allowInvalidSubmit: true,
   autoMapDistance: 2,
   uploadStepHook: async (value) => value,
-  selectHeaderStepHook: async (headerValues, data) => ({ headerValues, data }),
+  selectHeaderStepHook: async (headerValues, data) => ({
+    headerRow: headerValues,
+    importedRows: data,
+  }),
   matchColumnsStepHook: async (table) => table,
   dateFormat: 'yyyy-mm-dd', // ISO 8601,
   parseRaw: true,
@@ -22,11 +25,11 @@ export const SpreadsheetImport = <T extends string>(
   props: SpreadsheetImportProps<T>,
 ) => {
   return (
-    <Providers values={props}>
+    <ReactSpreadsheetImportContextProvider values={props}>
       <ModalWrapper isOpen={props.isOpen} onClose={props.onClose}>
-        <Steps />
+        <SpreadsheetImportStepperContainer />
       </ModalWrapper>
-    </Providers>
+    </ReactSpreadsheetImportContextProvider>
   );
 };
 

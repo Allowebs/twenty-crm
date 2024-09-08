@@ -4,6 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
 
 import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
 import { FieldMetadataType } from '~/generated/graphql';
+import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 
 import { FieldContextProvider } from '../../../__stories__/FieldContextProvider';
 import { useNumberField } from '../../../hooks/useNumberField';
@@ -21,11 +22,11 @@ const NumberFieldValueSetterEffect = ({ value }: { value: number }) => {
 
 type NumberFieldInputWithContextProps = NumberFieldInputProps & {
   value: number;
-  entityId?: string;
+  recordId?: string;
 };
 
 const NumberFieldInputWithContext = ({
-  entityId,
+  recordId,
   value,
   onEnter,
   onEscape,
@@ -50,9 +51,10 @@ const NumberFieldInputWithContext = ({
           metadata: {
             fieldName: 'number',
             placeHolder: 'Enter number',
+            objectMetadataNameSingular: 'person',
           },
         }}
-        entityId={entityId}
+        recordId={recordId}
       >
         <NumberFieldValueSetterEffect value={value} />
         <NumberFieldInput
@@ -104,7 +106,7 @@ const meta: Meta = {
     onTab: { control: false },
     onShiftTab: { control: false },
   },
-  decorators: [clearMocksDecorator],
+  decorators: [clearMocksDecorator, SnackBarDecorator],
   parameters: {
     clearMocks: true,
   },

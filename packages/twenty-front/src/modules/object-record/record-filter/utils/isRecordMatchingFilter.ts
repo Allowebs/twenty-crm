@@ -2,19 +2,23 @@ import { isObject } from '@sniptt/guards';
 
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import {
+  ActorFilter,
+  AddressFilter,
   AndObjectRecordFilter,
   BooleanFilter,
   CurrencyFilter,
   DateFilter,
+  EmailsFilter,
   FloatFilter,
   FullNameFilter,
+  LinksFilter,
   NotObjectRecordFilter,
-  ObjectRecordQueryFilter,
   OrObjectRecordFilter,
+  RecordGqlOperationFilter,
   StringFilter,
   URLFilter,
   UUIDFilter,
-} from '@/object-record/record-filter/types/ObjectRecordQueryFilter';
+} from '@/object-record/graphql/types/RecordGqlOperationFilter';
 import { isMatchingBooleanFilter } from '@/object-record/record-filter/utils/isMatchingBooleanFilter';
 import { isMatchingCurrencyFilter } from '@/object-record/record-filter/utils/isMatchingCurrencyFilter';
 import { isMatchingDateFilter } from '@/object-record/record-filter/utils/isMatchingDateFilter';
@@ -26,15 +30,15 @@ import { isDefined } from '~/utils/isDefined';
 import { isEmptyObject } from '~/utils/isEmptyObject';
 
 const isAndFilter = (
-  filter: ObjectRecordQueryFilter,
+  filter: RecordGqlOperationFilter,
 ): filter is AndObjectRecordFilter => 'and' in filter && !!filter.and;
 
 const isOrFilter = (
-  filter: ObjectRecordQueryFilter,
+  filter: RecordGqlOperationFilter,
 ): filter is OrObjectRecordFilter => 'or' in filter && !!filter.or;
 
 const isNotFilter = (
-  filter: ObjectRecordQueryFilter,
+  filter: RecordGqlOperationFilter,
 ): filter is NotObjectRecordFilter => 'not' in filter && !!filter.not;
 
 export const isRecordMatchingFilter = ({
@@ -43,7 +47,7 @@ export const isRecordMatchingFilter = ({
   objectMetadataItem,
 }: {
   record: any;
-  filter: ObjectRecordQueryFilter;
+  filter: RecordGqlOperationFilter;
   objectMetadataItem: ObjectMetadataItem;
 }): boolean => {
   if (Object.keys(filter).length === 0) {
@@ -142,6 +146,8 @@ export const isRecordMatchingFilter = ({
       case FieldMetadataType.Email:
       case FieldMetadataType.Phone:
       case FieldMetadataType.Select:
+      case FieldMetadataType.Rating:
+      case FieldMetadataType.MultiSelect:
       case FieldMetadataType.Text: {
         return isMatchingStringFilter({
           stringFilter: filterValue as StringFilter,
@@ -180,6 +186,48 @@ export const isRecordMatchingFilter = ({
             }))
         );
       }
+      case FieldMetadataType.Address: {
+        const addressFilter = filterValue as AddressFilter;
+
+        const keys = [
+          'addressStreet1',
+          'addressStreet2',
+          'addressCity',
+          'addressState',
+          'addressCountry',
+          'addressPostcode',
+        ] as const;
+
+        return keys.some((key) => {
+          const value = addressFilter[key];
+          if (value === undefined) {
+            return false;
+          }
+
+          return isMatchingStringFilter({
+            stringFilter: value,
+            value: record[filterKey][key],
+          });
+        });
+      }
+      case FieldMetadataType.Links: {
+        const linksFilter = filterValue as LinksFilter;
+
+        const keys = ['primaryLinkLabel', 'primaryLinkUrl'] as const;
+
+        return keys.some((key) => {
+          const value = linksFilter[key];
+          if (value === undefined) {
+            return false;
+          }
+
+          return isMatchingStringFilter({
+            stringFilter: value,
+            value: record[filterKey][key],
+          });
+        });
+      }
+      case FieldMetadataType.Date:
       case FieldMetadataType.DateTime: {
         return isMatchingDateFilter({
           dateFilter: filterValue as DateFilter,
@@ -209,6 +257,29 @@ export const isRecordMatchingFilter = ({
         return isMatchingCurrencyFilter({
           currencyFilter: filterValue as CurrencyFilter,
           value: record[filterKey].amountMicros,
+        });
+      }
+      case FieldMetadataType.Actor: {
+        const actorFilter = filterValue as ActorFilter;
+
+        return (
+          actorFilter.name === undefined ||
+          isMatchingStringFilter({
+            stringFilter: actorFilter.name,
+            value: record[filterKey].name,
+          })
+        );
+      }
+      case FieldMetadataType.Emails: {
+        const emailsFilter = filterValue as EmailsFilter;
+
+        if (emailsFilter.primaryEmail === undefined) {
+          return false;
+        }
+
+        return isMatchingStringFilter({
+          stringFilter: emailsFilter.primaryEmail,
+          value: record[filterKey].primaryEmail,
         });
       }
       case FieldMetadataType.Relation: {

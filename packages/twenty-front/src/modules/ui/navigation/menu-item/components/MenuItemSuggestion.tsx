@@ -1,8 +1,6 @@
-import { MouseEvent } from 'react';
 import styled from '@emotion/styled';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-import { HOVER_BACKGROUND } from '@/ui/theme/constants/HoverBackground';
+import { MouseEvent } from 'react';
+import { HOVER_BACKGROUND, IconComponent } from 'twenty-ui';
 
 import { MenuItemLeftContent } from '../internals/components/MenuItemLeftContent';
 import { StyledMenuItemLeftContent } from '../internals/components/StyledMenuItemBase';

@@ -3,16 +3,15 @@ import {
   SingleEntitySelectMenuItems,
   SingleEntitySelectMenuItemsProps,
 } from '@/object-record/relation-picker/components/SingleEntitySelectMenuItems';
-import { useFilteredSearchEntityQuery } from '@/search/hooks/useFilteredSearchEntityQuery';
+import { useEntitySelectSearch } from '@/object-record/relation-picker/hooks/useEntitySelectSearch';
+import { useRelationPickerEntitiesOptions } from '@/object-record/relation-picker/hooks/useRelationPickerEntitiesOptions';
 import { DropdownMenuSearchInput } from '@/ui/layout/dropdown/components/DropdownMenuSearchInput';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { isDefined } from '~/utils/isDefined';
 
-import { useEntitySelectSearch } from '../hooks/useEntitySelectSearch';
-
 export type SingleEntitySelectMenuItemsWithSearchProps = {
   excludedRelationRecordIds?: string[];
-  onCreate?: () => void;
+  onCreate?: ((searchInput?: string) => void) | (() => void);
   relationObjectNameSingular: string;
   relationPickerScopeId?: string;
   selectedRelationRecordIds: string[];
@@ -37,47 +36,55 @@ export const SingleEntitySelectMenuItemsWithSearch = ({
   selectedEntity,
   selectedRelationRecordIds,
 }: SingleEntitySelectMenuItemsWithSearchProps) => {
-  const { searchFilter, searchQuery, handleSearchFilterChange } =
-    useEntitySelectSearch({
-      relationPickerScopeId,
+  const { handleSearchFilterChange } = useEntitySelectSearch({
+    relationPickerScopeId,
+  });
+
+  const { entities, relationPickerSearchFilter } =
+    useRelationPickerEntitiesOptions({
+      relationObjectNameSingular,
+      selectedRelationRecordIds,
+      excludedRelationRecordIds,
     });
 
-  const showCreateButton = isDefined(onCreate) && searchFilter !== '';
+  const showCreateButton = isDefined(onCreate);
 
-  const entities = useFilteredSearchEntityQuery({
-    filters: [
-      {
-        fieldNames:
-          searchQuery?.computeFilterFields?.(relationObjectNameSingular) ?? [],
-        filter: searchFilter,
-      },
-    ],
-    orderByField: 'createdAt',
-    selectedIds: selectedRelationRecordIds,
-    excludeEntityIds: excludedRelationRecordIds,
-    objectNameSingular: relationObjectNameSingular,
-  });
+  let onCreateWithInput = undefined;
+
+  if (isDefined(onCreate)) {
+    onCreateWithInput = () => {
+      if (onCreate.length > 0) {
+        (onCreate as (searchInput?: string) => void)(
+          relationPickerSearchFilter,
+        );
+      } else {
+        (onCreate as () => void)();
+      }
+    };
+  }
 
   return (
     <>
       <ObjectMetadataItemsRelationPickerEffect
         relationPickerScopeId={relationPickerScopeId}
       />
-      <DropdownMenuSearchInput
-        value={searchFilter}
-        onChange={handleSearchFilterChange}
-        autoFocus
-      />
+      <DropdownMenuSearchInput onChange={handleSearchFilterChange} autoFocus />
       <DropdownMenuSeparator />
       <SingleEntitySelectMenuItems
         entitiesToSelect={entities.entitiesToSelect}
         loading={entities.loading}
-        selectedEntity={selectedEntity ?? entities.selectedEntities[0]}
+        selectedEntity={
+          selectedEntity ??
+          (entities.selectedEntities.length === 1
+            ? entities.selectedEntities[0]
+            : undefined)
+        }
+        hotkeyScope={relationPickerScopeId}
+        onCreate={onCreateWithInput}
         {...{
           EmptyIcon,
           emptyLabel,
           onCancel,
-          onCreate,
           onEntitySelected,
           showCreateButton,
         }}

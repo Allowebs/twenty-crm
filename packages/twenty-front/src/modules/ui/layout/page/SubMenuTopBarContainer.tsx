@@ -1,15 +1,18 @@
-import { JSX } from 'react';
 import styled from '@emotion/styled';
+import { JSX, ReactNode } from 'react';
+import { IconComponent } from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
+import { InformationBannerWrapper } from '@/information-banner/components/InformationBannerWrapper';
+import { OBJECT_SETTINGS_WIDTH } from '@/settings/data-model/constants/ObjectSettings';
+import { PageBody } from './PageBody';
 import { PageHeader } from './PageHeader';
-import { RightDrawerContainer } from './RightDrawerContainer';
 
 type SubMenuTopBarContainerProps = {
   children: JSX.Element | JSX.Element[];
-  title: string;
+  title: string | ReactNode;
+  actionButton?: ReactNode;
   Icon: IconComponent;
   className?: string;
 };
@@ -24,6 +27,7 @@ const StyledContainer = styled.div<{ isMobile: boolean }>`
 export const SubMenuTopBarContainer = ({
   children,
   title,
+  actionButton,
   Icon,
   className,
 }: SubMenuTopBarContainerProps) => {
@@ -31,8 +35,17 @@ export const SubMenuTopBarContainer = ({
 
   return (
     <StyledContainer isMobile={isMobile} className={className}>
-      {isMobile && <PageHeader title={title} Icon={Icon} />}
-      <RightDrawerContainer>{children}</RightDrawerContainer>
+      <PageHeader
+        title={title}
+        Icon={Icon}
+        width={OBJECT_SETTINGS_WIDTH + 4 * 8}
+      >
+        {actionButton}
+      </PageHeader>
+      <PageBody>
+        <InformationBannerWrapper />
+        {children}
+      </PageBody>
     </StyledContainer>
   );
 };

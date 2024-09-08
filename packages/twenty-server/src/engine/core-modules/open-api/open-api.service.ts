@@ -4,13 +4,7 @@ import { Request } from 'express';
 import { OpenAPIV3_1 } from 'openapi-types';
 
 import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
-import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
 import { baseSchema } from 'src/engine/core-modules/open-api/utils/base-schema.utils';
-import {
-  computeManyResultPath,
-  computeSingleResultPath,
-} from 'src/engine/core-modules/open-api/utils/path.utils';
-import { getErrorResponses } from 'src/engine/core-modules/open-api/utils/get-error-responses.utils';
 import {
   computeMetadataSchemaComponents,
   computeParameterComponents,
@@ -18,14 +12,30 @@ import {
 } from 'src/engine/core-modules/open-api/utils/components.utils';
 import { computeSchemaTags } from 'src/engine/core-modules/open-api/utils/compute-schema-tags.utils';
 import { computeWebhooks } from 'src/engine/core-modules/open-api/utils/computeWebhooks.utils';
-import { capitalize } from 'src/utils/capitalize';
 import {
+  get400ErrorResponses,
+  get401ErrorResponses,
+} from 'src/engine/core-modules/open-api/utils/get-error-responses.utils';
+import {
+  computeBatchPath,
+  computeDuplicatesResultPath,
+  computeManyResultPath,
+  computeSingleResultPath,
+} from 'src/engine/core-modules/open-api/utils/path.utils';
+import {
+  getRequestBody,
+  getUpdateRequestBody,
+} from 'src/engine/core-modules/open-api/utils/request-body.utils';
+import {
+  getCreateOneResponse201,
   getDeleteResponse200,
-  getManyResultResponse200,
-  getSingleResultSuccessResponse,
+  getFindManyResponse200,
+  getFindOneResponse200,
+  getUpdateOneResponse200,
 } from 'src/engine/core-modules/open-api/utils/responses.utils';
-import { getRequestBody } from 'src/engine/core-modules/open-api/utils/request-body.utils';
 import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
+import { capitalize } from 'src/utils/capitalize';
 import { getServerUrl } from 'src/utils/get-server-url';
 
 @Injectable()
@@ -60,7 +70,10 @@ export class OpenApiService {
     }
     schema.paths = objectMetadataItems.reduce((paths, item) => {
       paths[`/${item.namePlural}`] = computeManyResultPath(item);
+      paths[`/batch/${item.namePlural}`] = computeBatchPath(item);
       paths[`/${item.namePlural}/{id}`] = computeSingleResultPath(item);
+      paths[`/${item.namePlural}/duplicates`] =
+        computeDuplicatesResultPath(item);
 
       return paths;
     }, schema.paths as OpenAPIV3_1.PathsObject);
@@ -86,8 +99,8 @@ export class OpenApiService {
       schemas: computeSchemaComponents(objectMetadataItems),
       parameters: computeParameterComponents(),
       responses: {
-        '400': getErrorResponses('Invalid request'),
-        '401': getErrorResponses('Unauthorized'),
+        '400': get400ErrorResponses(),
+        '401': get401ErrorResponses(),
       },
     };
 
@@ -126,9 +139,13 @@ export class OpenApiService {
         get: {
           tags: [item.namePlural],
           summary: `Find Many ${item.namePlural}`,
-          parameters: [{ $ref: '#/components/parameters/filter' }],
+          parameters: [
+            { $ref: '#/components/parameters/limit' },
+            { $ref: '#/components/parameters/startingAfter' },
+            { $ref: '#/components/parameters/endingBefore' },
+          ],
           responses: {
-            '200': getManyResultResponse200(item),
+            '200': getFindManyResponse200(item, true),
             '400': { $ref: '#/components/responses/400' },
             '401': { $ref: '#/components/responses/401' },
           },
@@ -137,9 +154,9 @@ export class OpenApiService {
           tags: [item.namePlural],
           summary: `Create One ${item.nameSingular}`,
           operationId: `createOne${capitalize(item.nameSingular)}`,
-          requestBody: getRequestBody(item),
+          requestBody: getRequestBody(capitalize(item.nameSingular)),
           responses: {
-            '200': getSingleResultSuccessResponse(item),
+            '200': getCreateOneResponse201(item, true),
             '400': { $ref: '#/components/responses/400' },
             '401': { $ref: '#/components/responses/401' },
           },
@@ -151,7 +168,7 @@ export class OpenApiService {
           summary: `Find One ${item.nameSingular}`,
           parameters: [{ $ref: '#/components/parameters/idPath' }],
           responses: {
-            '200': getSingleResultSuccessResponse(item),
+            '200': getFindOneResponse200(item),
             '400': { $ref: '#/components/responses/400' },
             '401': { $ref: '#/components/responses/401' },
           },
@@ -162,23 +179,25 @@ export class OpenApiService {
           operationId: `deleteOne${capitalize(item.nameSingular)}`,
           parameters: [{ $ref: '#/components/parameters/idPath' }],
           responses: {
-            '200': getDeleteResponse200(item),
+            '200': getDeleteResponse200(item, true),
             '400': { $ref: '#/components/responses/400' },
             '401': { $ref: '#/components/responses/401' },
           },
         },
-        put: {
-          tags: [item.namePlural],
-          summary: `Update One ${item.namePlural}`,
-          operationId: `updateOne${capitalize(item.nameSingular)}`,
-          parameters: [{ $ref: '#/components/parameters/idPath' }],
-          requestBody: getRequestBody(item),
-          responses: {
-            '200': getSingleResultSuccessResponse(item),
-            '400': { $ref: '#/components/responses/400' },
-            '401': { $ref: '#/components/responses/401' },
+        ...(item.nameSingular !== 'relation' && {
+          patch: {
+            tags: [item.namePlural],
+            summary: `Update One ${item.nameSingular}`,
+            operationId: `updateOne${capitalize(item.nameSingular)}`,
+            parameters: [{ $ref: '#/components/parameters/idPath' }],
+            requestBody: getUpdateRequestBody(capitalize(item.nameSingular)),
+            responses: {
+              '200': getUpdateOneResponse200(item, true),
+              '400': { $ref: '#/components/responses/400' },
+              '401': { $ref: '#/components/responses/401' },
+            },
           },
-        },
+        }),
       } as OpenAPIV3_1.PathItemObject;
 
       return path;
@@ -187,10 +206,10 @@ export class OpenApiService {
     schema.components = {
       ...schema.components, // components.securitySchemes is defined in base Schema
       schemas: computeMetadataSchemaComponents(metadata),
-      parameters: computeParameterComponents(),
+      parameters: computeParameterComponents(true),
       responses: {
-        '400': getErrorResponses('Invalid request'),
-        '401': getErrorResponses('Unauthorized'),
+        '400': get400ErrorResponses(),
+        '401': get401ErrorResponses(),
       },
     };
 

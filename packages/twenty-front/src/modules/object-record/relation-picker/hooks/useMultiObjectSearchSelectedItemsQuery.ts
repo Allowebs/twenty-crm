@@ -1,10 +1,9 @@
-import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
+import { gql, useQuery } from '@apollo/client';
 import { isNonEmptyArray } from '@sniptt/guards';
 import { useRecoilValue } from 'recoil';
 
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { useGenerateFindManyRecordsForMultipleMetadataItemsQuery } from '@/object-record/hooks/useGenerateFindManyRecordsForMultipleMetadataItemsQuery';
+import { useGenerateCombinedFindManyRecordsQuery } from '@/object-record/multiple-objects/hooks/useGenerateCombinedFindManyRecordsQuery';
 import { useLimitPerMetadataItem } from '@/object-record/relation-picker/hooks/useLimitPerMetadataItem';
 import {
   MultiObjectRecordQueryResult,
@@ -68,8 +67,13 @@ export const useMultiObjectSearchSelectedItemsQuery = ({
   });
 
   const multiSelectQueryForSelectedIds =
-    useGenerateFindManyRecordsForMultipleMetadataItemsQuery({
-      targetObjectMetadataItems: objectMetadataItemsUsedInSelectedIdsQuery,
+    useGenerateCombinedFindManyRecordsQuery({
+      operationSignatures: objectMetadataItemsUsedInSelectedIdsQuery.map(
+        (objectMetadataItem) => ({
+          objectNameSingular: objectMetadataItem.nameSingular,
+          variables: {},
+        }),
+      ),
     });
 
   const {

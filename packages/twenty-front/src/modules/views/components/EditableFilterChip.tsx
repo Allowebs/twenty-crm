@@ -1,6 +1,7 @@
+import { useIcons } from 'twenty-ui';
+
 import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
 import { getOperandLabelShort } from '@/object-record/object-filter-dropdown/utils/getOperandLabel';
-import { useIcons } from '@/ui/display/icon/hooks/useIcons';
 import { SortOrFilterChip } from '@/views/components/SortOrFilterChip';
 
 type EditableFilterChipProps = {
@@ -15,8 +16,8 @@ export const EditableFilterChip = ({
   const { getIcon } = useIcons();
   return (
     <SortOrFilterChip
-      key={viewFilter.fieldMetadataId}
-      testId={viewFilter.fieldMetadataId}
+      key={viewFilter.id}
+      testId={viewFilter.id}
       labelKey={viewFilter.definition.label}
       labelValue={`${getOperandLabelShort(viewFilter.operand)} ${
         viewFilter.displayValue

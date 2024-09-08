@@ -17,6 +17,7 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
           description
           icon
           isCustom
+          isRemote
           isActive
           isSystem
           createdAt
@@ -47,6 +48,7 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
                     nameSingular
                     namePlural
                     isSystem
+                    isRemote
                   }
                   toFieldMetadataId
                 }
@@ -59,11 +61,34 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
                     nameSingular
                     namePlural
                     isSystem
+                    isRemote
                   }
                   fromFieldMetadataId
                 }
                 defaultValue
                 options
+                relationDefinition {
+                  relationId
+                  direction
+                  sourceObjectMetadata {
+                    id
+                    nameSingular
+                    namePlural
+                  }
+                  sourceFieldMetadata {
+                    id
+                    name
+                  }
+                  targetObjectMetadata {
+                    id
+                    nameSingular
+                    namePlural
+                  }
+                  targetFieldMetadata {
+                    id
+                    name
+                  }
+                }
               }
             }
             pageInfo {

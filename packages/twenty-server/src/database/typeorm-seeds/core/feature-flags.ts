@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { FeatureFlagKeys } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
 
 const tableName = 'featureFlag';
 
@@ -16,34 +16,44 @@ export const seedFeatureFlags = async (
     .orIgnore()
     .values([
       {
-        key: FeatureFlagKeys.IsBlocklistEnabled,
+        key: FeatureFlagKey.IsAirtableIntegrationEnabled,
         workspaceId: workspaceId,
         value: true,
       },
       {
-        key: FeatureFlagKeys.IsCalendarEnabled,
+        key: FeatureFlagKey.IsPostgreSQLIntegrationEnabled,
         workspaceId: workspaceId,
         value: true,
       },
       {
-        key: FeatureFlagKeys.IsAirtableIntegrationEnabled,
+        key: FeatureFlagKey.IsEventObjectEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsStripeIntegrationEnabled,
         workspaceId: workspaceId,
         value: true,
       },
       {
-        key: FeatureFlagKeys.IsPostgreSQLIntegrationEnabled,
+        key: FeatureFlagKey.IsFunctionSettingsEnabled,
         workspaceId: workspaceId,
         value: true,
       },
       {
-        key: FeatureFlagKeys.IsEventObjectEnabled,
+        key: FeatureFlagKey.IsWorkflowEnabled,
         workspaceId: workspaceId,
-        value: true,
+        value: false,
       },
       {
-        key: FeatureFlagKeys.IsFullSyncV2Enabled,
+        key: FeatureFlagKey.IsMessageThreadSubscriberEnabled,
         workspaceId: workspaceId,
-        value: true,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsWorkspaceFavoriteEnabled,
+        workspaceId: workspaceId,
+        value: false,
       },
     ])
     .execute();

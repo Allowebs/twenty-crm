@@ -1,8 +1,6 @@
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-
-import { IconCheck } from '@/ui/display/icon';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconCheck, IconComponent } from 'twenty-ui';
 
 import { MenuItemLeftContent } from '../internals/components/MenuItemLeftContent';
 import { StyledMenuItemBase } from '../internals/components/StyledMenuItemBase';
@@ -69,7 +67,7 @@ export const MenuItemSelect = ({
       hovered={hovered}
     >
       <MenuItemLeftContent LeftIcon={LeftIcon} text={text} />
-      {selected && <IconCheck size={theme.icon.size.sm} />}
+      {selected && <IconCheck size={theme.icon.size.md} />}
     </StyledMenuItemSelect>
   );
 };

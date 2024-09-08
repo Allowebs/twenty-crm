@@ -23,6 +23,7 @@ const filterDefinitions: FilterDefinition[] = [
 ];
 
 const mockFilter: Filter = {
+  id: 'id',
   definition: filterDefinitions[0],
   displayValue: '',
   fieldMetadataId: '',
@@ -177,31 +178,33 @@ describe('useFilterDropdown', () => {
     });
   });
 
-  it('should set objectFilterDropdownSelectedEntityId', async () => {
-    const mockResult = 'value';
+  it('should set objectFilterDropdownSelectedRecordId', async () => {
+    const mockResult = ['value'];
     const { result } = renderHook(() => {
       useFilterDropdown({ filterDropdownId });
-      const { objectFilterDropdownSelectedEntityIdState } =
+      const { objectFilterDropdownSelectedRecordIdsState } =
         useFilterDropdownStates(filterDropdownId);
 
       const [
-        objectFilterDropdownSelectedEntityId,
-        setObjectFilterDropdownSelectedEntityId,
-      ] = useRecoilState(objectFilterDropdownSelectedEntityIdState);
+        objectFilterDropdownSelectedRecordIds,
+        setObjectFilterDropdownSelectedRecordIds,
+      ] = useRecoilState(objectFilterDropdownSelectedRecordIdsState);
       return {
-        objectFilterDropdownSelectedEntityId,
-        setObjectFilterDropdownSelectedEntityId,
+        objectFilterDropdownSelectedRecordIds,
+        setObjectFilterDropdownSelectedRecordIds,
       };
     }, renderHookConfig);
 
-    expect(result.current.objectFilterDropdownSelectedEntityId).toBeNull();
+    expect(
+      JSON.stringify(result.current.objectFilterDropdownSelectedRecordIds),
+    ).toBe(JSON.stringify([]));
 
     act(() => {
-      result.current.setObjectFilterDropdownSelectedEntityId(mockResult);
+      result.current.setObjectFilterDropdownSelectedRecordIds(mockResult);
     });
 
     await waitFor(() => {
-      expect(result.current.objectFilterDropdownSelectedEntityId).toBe(
+      expect(result.current.objectFilterDropdownSelectedRecordIds).toBe(
         mockResult,
       );
     });
@@ -351,7 +354,7 @@ describe('useFilterDropdown', () => {
   });
 
   it('should handle scopeId undefined on initial values', () => {
-    console.error = jest.fn();
+    global.console.error = jest.fn();
 
     const renderFunction = () => {
       renderHook(() => useFilterDropdown(), renderHookConfig);

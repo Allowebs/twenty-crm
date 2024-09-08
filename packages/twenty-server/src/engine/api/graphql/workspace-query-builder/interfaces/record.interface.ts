@@ -3,6 +3,7 @@ export interface Record {
   [key: string]: any;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
 }
 
 export type RecordFilter = {
@@ -16,9 +17,9 @@ export enum OrderByDirection {
   DescNullsLast = 'DescNullsLast',
 }
 
-export type RecordOrderBy = {
+export type RecordOrderBy = Array<{
   [Property in keyof Record]?: OrderByDirection;
-};
+}>;
 
 export interface RecordDuplicateCriteria {
   objectName: string;

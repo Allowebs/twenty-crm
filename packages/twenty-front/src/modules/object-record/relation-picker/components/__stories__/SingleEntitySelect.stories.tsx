@@ -1,26 +1,27 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
+import { ComponentDecorator, IconUserCircle } from 'twenty-ui';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { IconUserCircle } from '@/ui/display/icon';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
 import { ComponentWithRecoilScopeDecorator } from '~/testing/decorators/ComponentWithRecoilScopeDecorator';
 import { ObjectMetadataItemsDecorator } from '~/testing/decorators/ObjectMetadataItemsDecorator';
 import { RelationPickerDecorator } from '~/testing/decorators/RelationPickerDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { mockedPeopleData } from '~/testing/mock-data/people';
-import { sleep } from '~/testing/sleep';
+import { getPeopleMock } from '~/testing/mock-data/people';
+import { sleep } from '~/utils/sleep';
 
 import { EntityForSelect } from '../../types/EntityForSelect';
 import { SingleEntitySelect } from '../SingleEntitySelect';
 
-const entities = mockedPeopleData.map<EntityForSelect>((person) => ({
+const peopleMock = getPeopleMock();
+
+const entities = peopleMock.map<EntityForSelect>((person) => ({
   id: person.id,
   name: person.name.firstName + ' ' + person.name.lastName,
-  avatarUrl: person.avatarUrl,
+  avatarUrl: 'https://picsum.photos/200',
   avatarType: 'rounded',
-  record: person,
+  record: { ...person, __typename: 'Person' },
 }));
 
 const meta: Meta<typeof SingleEntitySelect> = {

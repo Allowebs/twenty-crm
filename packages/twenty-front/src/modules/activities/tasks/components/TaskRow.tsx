@@ -1,27 +1,29 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconCalendar, OverflowingTextWithTooltip } from 'twenty-ui';
 
-import { ActivityTargetChips } from '@/activities/components/ActivityTargetChips';
-import { useActivityTargetObjectRecords } from '@/activities/hooks/useActivityTargetObjectRecords';
 import { useOpenActivityRightDrawer } from '@/activities/hooks/useOpenActivityRightDrawer';
-import { Activity } from '@/activities/types/Activity';
+import { ActivityTargetsInlineCell } from '@/activities/inline-cell/components/ActivityTargetsInlineCell';
 import { getActivitySummary } from '@/activities/utils/getActivitySummary';
-import { IconCalendar, IconComment } from '@/ui/display/icon';
-import { OverflowingTextWithTooltip } from '@/ui/display/tooltip/OverflowingTextWithTooltip';
 import { Checkbox, CheckboxShape } from '@/ui/input/components/Checkbox';
 import { beautifyExactDate, hasDatePassed } from '~/utils/date-utils';
 
+import { Task } from '@/activities/types/Task';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { useFieldContext } from '@/object-record/hooks/useFieldContext';
 import { useCompleteTask } from '../hooks/useCompleteTask';
 
 const StyledContainer = styled.div`
   align-items: center;
-  align-self: stretch;
+  justify-content: space-between;
   border-bottom: 1px solid ${({ theme }) => theme.border.color.light};
   cursor: pointer;
   display: inline-flex;
   height: ${({ theme }) => theme.spacing(12)};
   min-width: calc(100% - ${({ theme }) => theme.spacing(8)});
+  max-width: calc(100% - ${({ theme }) => theme.spacing(8)});
   padding: 0 ${({ theme }) => theme.spacing(4)};
+  overflow: hidden;
 
   &:last-child {
     border-bottom: 0;
@@ -31,9 +33,9 @@ const StyledContainer = styled.div`
 const StyledTaskBody = styled.div`
   color: ${({ theme }) => theme.font.color.tertiary};
   display: flex;
-  flex-direction: row;
-  flex-grow: 1;
-  width: 1px;
+  max-width: 100%;
+  flex: 1;
+  overflow: hidden;
 `;
 
 const StyledTaskTitle = styled.div<{
@@ -43,13 +45,9 @@ const StyledTaskTitle = styled.div<{
   font-weight: ${({ theme }) => theme.font.weight.medium};
   padding: 0 ${({ theme }) => theme.spacing(2)};
   text-decoration: ${({ completed }) => (completed ? 'line-through' : 'none')};
-`;
-
-const StyledCommentIcon = styled.div`
-  align-items: center;
-  color: ${({ theme }) => theme.font.color.light};
-  display: flex;
-  margin-left: ${({ theme }) => theme.spacing(2)};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const StyledDueDate = styled.div<{
@@ -61,9 +59,10 @@ const StyledDueDate = styled.div<{
   display: flex;
   gap: ${({ theme }) => theme.spacing(1)};
   padding-left: ${({ theme }) => theme.spacing(2)};
+  white-space: nowrap;
 `;
 
-const StyledFieldsContainer = styled.div`
+const StyledRightSideContainer = styled.div`
   display: flex;
 `;
 
@@ -71,15 +70,30 @@ const StyledPlaceholder = styled.div`
   color: ${({ theme }) => theme.font.color.light};
 `;
 
-export const TaskRow = ({ task }: { task: Activity }) => {
+const StyledLeftSideContainer = styled.div`
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+`;
+
+const StyledCheckboxContainer = styled.div`
+  display: flex;
+`;
+
+export const TaskRow = ({ task }: { task: Task }) => {
   const theme = useTheme();
-  const openActivityRightDrawer = useOpenActivityRightDrawer();
+  const openActivityRightDrawer = useOpenActivityRightDrawer({
+    objectNameSingular: CoreObjectNameSingular.Task,
+  });
 
   const body = getActivitySummary(task.body);
   const { completeTask } = useCompleteTask(task);
 
-  const { activityTargetObjectRecords } = useActivityTargetObjectRecords({
-    activityId: task.id,
+  const { FieldContextProvider: TaskTargetsContextProvider } = useFieldContext({
+    objectNameSingular: CoreObjectNameSingular.Task,
+    objectRecordId: task.id,
+    fieldMetadataName: 'taskTargets',
+    fieldPosition: 0,
   });
 
   return (
@@ -88,41 +102,46 @@ export const TaskRow = ({ task }: { task: Activity }) => {
         openActivityRightDrawer(task.id);
       }}
     >
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        <Checkbox
-          checked={!!task.completedAt}
-          shape={CheckboxShape.Rounded}
-          onCheckedChange={completeTask}
-        />
-      </div>
-      <StyledTaskTitle completed={task.completedAt !== null}>
-        {task.title || <StyledPlaceholder>Task title</StyledPlaceholder>}
-      </StyledTaskTitle>
-      <StyledTaskBody>
-        <OverflowingTextWithTooltip text={body} />
-        {task.comments && task.comments.length > 0 && (
-          <StyledCommentIcon>
-            <IconComment size={theme.icon.size.md} />
-          </StyledCommentIcon>
+      <StyledLeftSideContainer>
+        <StyledCheckboxContainer
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <Checkbox
+            checked={task.status === 'DONE'}
+            shape={CheckboxShape.Rounded}
+            onCheckedChange={completeTask}
+          />
+        </StyledCheckboxContainer>
+        <StyledTaskTitle completed={task.status === 'DONE'}>
+          {task.title || <StyledPlaceholder>Task title</StyledPlaceholder>}
+        </StyledTaskTitle>
+        <StyledTaskBody>
+          <OverflowingTextWithTooltip text={body} />
+        </StyledTaskBody>
+      </StyledLeftSideContainer>
+      <StyledRightSideContainer>
+        {TaskTargetsContextProvider && (
+          <TaskTargetsContextProvider>
+            <ActivityTargetsInlineCell
+              activityObjectNameSingular={CoreObjectNameSingular.Task}
+              activity={task}
+              showLabel={false}
+              maxWidth={200}
+              readonly
+            />
+          </TaskTargetsContextProvider>
         )}
-      </StyledTaskBody>
-      <StyledFieldsContainer>
-        <ActivityTargetChips
-          activityTargetObjectRecords={activityTargetObjectRecords}
-        />
         <StyledDueDate
           isPast={
-            !!task.dueAt && hasDatePassed(task.dueAt) && !task.completedAt
+            !!task.dueAt && hasDatePassed(task.dueAt) && task.status === 'TODO'
           }
         >
           <IconCalendar size={theme.icon.size.md} />
           {task.dueAt && beautifyExactDate(task.dueAt)}
         </StyledDueDate>
-      </StyledFieldsContainer>
+      </StyledRightSideContainer>
     </StyledContainer>
   );
 };

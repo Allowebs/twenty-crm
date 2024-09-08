@@ -1,11 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { Logger } from '@nestjs/common';
 
-import { MessageQueueJob } from 'src/engine/integrations/message-queue/interfaces/message-queue-job.interface';
+import { Process } from 'src/engine/integrations/message-queue/decorators/process.decorator';
+import { Processor } from 'src/engine/integrations/message-queue/decorators/processor.decorator';
+import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
 
 export type CallWebhookJobData = {
   targetUrl: string;
-  eventType: string;
+  eventName: string;
   objectMetadata: { id: string; nameSingular: string };
   workspaceId: string;
   webhookId: string;
@@ -13,12 +15,13 @@ export type CallWebhookJobData = {
   record: any;
 };
 
-@Injectable()
-export class CallWebhookJob implements MessageQueueJob<CallWebhookJobData> {
+@Processor(MessageQueue.webhookQueue)
+export class CallWebhookJob {
   private readonly logger = new Logger(CallWebhookJob.name);
 
   constructor(private readonly httpService: HttpService) {}
 
+  @Process(CallWebhookJob.name)
   async handle(data: CallWebhookJobData): Promise<void> {
     try {
       await this.httpService.axiosRef.post(data.targetUrl, data);

@@ -1,5 +1,5 @@
 import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { getObjectOrderByField } from '@/object-metadata/utils/getObjectOrderByField';
+import { getOrderByFieldForObjectMetadataItem } from '@/object-metadata/utils/getObjectOrderByField';
 
 const mockObjectMetadataItems = getObjectMetadataItemsMock();
 
@@ -8,9 +8,9 @@ describe('getObjectOrderByField', () => {
     const objectMetadataItem = mockObjectMetadataItems.find(
       (item) => item.nameSingular === 'person',
     )!;
-    const res = getObjectOrderByField(objectMetadataItem);
-    expect(res).toEqual({
-      name: { firstName: 'AscNullsLast', lastName: 'AscNullsLast' },
-    });
+    const res = getOrderByFieldForObjectMetadataItem(objectMetadataItem);
+    expect(res).toEqual([
+      { name: { firstName: 'AscNullsLast', lastName: 'AscNullsLast' } },
+    ]);
   });
 });

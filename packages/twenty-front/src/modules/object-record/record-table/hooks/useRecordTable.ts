@@ -4,6 +4,7 @@ import { Key } from 'ts-key-enum';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
 import { useGetIsSomeCellInEditModeState } from '@/object-record/record-table/hooks/internal/useGetIsSomeCellInEditMode';
 import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
+import { useSetHasUserSelectedAllRows } from '@/object-record/record-table/hooks/internal/useSetAllRowSelectedState';
 import { useRecordTableMoveFocus } from '@/object-record/record-table/hooks/useRecordTableMoveFocus';
 import { isSoftFocusUsingMouseState } from '@/object-record/record-table/states/isSoftFocusUsingMouseState';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
@@ -41,6 +42,10 @@ export const useRecordTable = (props?: useRecordTableProps) => {
     isRecordTableInitialLoadingState,
     tableLastRowVisibleState,
     selectedRowIdsSelector,
+    onToggleColumnFilterState,
+    onToggleColumnSortState,
+    pendingRecordIdState,
+    hasUserSelectedAllRowsState,
   } = useRecordTableStates(recordTableId);
 
   const setAvailableTableColumns = useRecoilCallback(
@@ -69,6 +74,9 @@ export const useRecordTable = (props?: useRecordTableProps) => {
 
   const setOnColumnsChange = useSetRecoilState(onColumnsChangeState);
 
+  const setOnToggleColumnFilter = useSetRecoilState(onToggleColumnFilterState);
+  const setOnToggleColumnSort = useSetRecoilState(onToggleColumnSortState);
+
   const setIsRecordTableInitialLoading = useSetRecoilState(
     isRecordTableInitialLoadingState,
   );
@@ -92,7 +100,7 @@ export const useRecordTable = (props?: useRecordTableProps) => {
 
   const onEntityCountChange = useRecoilCallback(
     ({ snapshot }) =>
-      (count: number) => {
+      (count?: number) => {
         const onEntityCountChange = getSnapshotValue(
           snapshot,
           onEntityCountChangeState,
@@ -110,7 +118,9 @@ export const useRecordTable = (props?: useRecordTableProps) => {
 
   const leaveTableFocus = useLeaveTableFocus(recordTableId);
 
-  const setRowSelectedState = useSetRowSelectedState(recordTableId);
+  const setRowSelected = useSetRowSelectedState(recordTableId);
+
+  const setHasUserSelectedAllRows = useSetHasUserSelectedAllRows(recordTableId);
 
   const resetTableRowSelection = useResetTableRowSelection(recordTableId);
 
@@ -186,6 +196,8 @@ export const useRecordTable = (props?: useRecordTableProps) => {
   const isSomeCellInEditModeState =
     useGetIsSomeCellInEditModeState(recordTableId);
 
+  const setPendingRecordId = useSetRecoilState(pendingRecordIdState);
+
   return {
     scopeId,
     onColumnsChange,
@@ -196,7 +208,7 @@ export const useRecordTable = (props?: useRecordTableProps) => {
     setRecordTableData,
     setTableColumns,
     leaveTableFocus,
-    setRowSelectedState,
+    setRowSelected,
     resetTableRowSelection,
     upsertRecordTableItem,
     moveDown,
@@ -211,5 +223,10 @@ export const useRecordTable = (props?: useRecordTableProps) => {
     setSoftFocusPosition,
     isSomeCellInEditModeState,
     selectedRowIdsSelector,
+    setHasUserSelectedAllRows,
+    setOnToggleColumnFilter,
+    setOnToggleColumnSort,
+    setPendingRecordId,
+    hasUserSelectedAllRowsState,
   };
 };

@@ -1,25 +1,31 @@
-import { useCallback, useContext } from 'react';
 import styled from '@emotion/styled';
 import qs from 'qs';
+import { useCallback, useContext } from 'react';
 import { useRecoilValue } from 'recoil';
+import { IconForbid, IconPencil, IconPlus } from 'twenty-ui';
 
+import { ObjectMetadataItemsRelationPickerEffect } from '@/object-metadata/components/ObjectMetadataItemsRelationPickerEffect';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
 import { usePersistField } from '@/object-record/record-field/hooks/usePersistField';
+import { RelationFromManyFieldInputMultiRecordsEffect } from '@/object-record/record-field/meta-types/input/components/RelationFromManyFieldInputMultiRecordsEffect';
+import { useUpdateRelationFromManyFieldInput } from '@/object-record/record-field/meta-types/input/hooks/useUpdateRelationFromManyFieldInput';
 import { FieldRelationMetadata } from '@/object-record/record-field/types/FieldMetadata';
 import { RecordDetailRelationRecordsList } from '@/object-record/record-show/record-detail-section/components/RecordDetailRelationRecordsList';
 import { RecordDetailRelationRecordsListEmptyState } from '@/object-record/record-show/record-detail-section/components/RecordDetailRelationRecordsListEmptyState';
+import { RecordDetailRelationSectionSkeletonLoader } from '@/object-record/record-show/record-detail-section/components/RecordDetailRelationSectionSkeletonLoader';
 import { RecordDetailSection } from '@/object-record/record-show/record-detail-section/components/RecordDetailSection';
 import { RecordDetailSectionHeader } from '@/object-record/record-show/record-detail-section/components/RecordDetailSectionHeader';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
+import { MultiRecordSelect } from '@/object-record/relation-picker/components/MultiRecordSelect';
 import { SingleEntitySelectMenuItemsWithSearch } from '@/object-record/relation-picker/components/SingleEntitySelectMenuItemsWithSearch';
+import { useAddNewRecordAndOpenRightDrawer } from '@/object-record/relation-picker/hooks/useAddNewRecordAndOpenRightDrawer';
 import { useRelationPicker } from '@/object-record/relation-picker/hooks/useRelationPicker';
 import { RelationPickerScope } from '@/object-record/relation-picker/scopes/RelationPickerScope';
 import { EntityForSelect } from '@/object-record/relation-picker/types/EntityForSelect';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { IconForbid, IconPencil, IconPlus } from '@/ui/display/icon';
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
@@ -27,19 +33,25 @@ import { DropdownScope } from '@/ui/layout/dropdown/scopes/DropdownScope';
 import { FilterQueryParams } from '@/views/hooks/internal/useViewFromQueryParams';
 import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
 
+type RecordDetailRelationSectionProps = {
+  loading: boolean;
+};
+
 const StyledAddDropdown = styled(Dropdown)`
   margin-left: auto;
 `;
 
-export const RecordDetailRelationSection = () => {
-  const { entityId, fieldDefinition } = useContext(FieldContext);
+export const RecordDetailRelationSection = ({
+  loading,
+}: RecordDetailRelationSectionProps) => {
+  const { recordId, fieldDefinition } = useContext(FieldContext);
   const {
     fieldName,
     relationFieldMetadataId,
     relationObjectMetadataNameSingular,
     relationType,
   } = fieldDefinition.metadata as FieldRelationMetadata;
-  const record = useRecoilValue(recordStoreFamilyState(entityId));
+  const record = useRecoilValue(recordStoreFamilyState(recordId));
 
   const { objectMetadataItem: relationObjectMetadataItem } =
     useObjectMetadataItem({
@@ -51,19 +63,21 @@ export const RecordDetailRelationSection = () => {
   );
 
   const fieldValue = useRecoilValue<
-    ({ id: string } & Record<string, any>) | null
-  >(recordStoreFamilySelector({ recordId: entityId, fieldName }));
+    ({ id: string } & Record<string, any>) | ObjectRecord[] | null
+  >(recordStoreFamilySelector({ recordId, fieldName }));
 
+  // TODO: use new relation type
   const isToOneObject = relationType === 'TO_ONE_OBJECT';
   const isFromManyObjects = relationType === 'FROM_MANY_OBJECTS';
 
   const relationRecords: ObjectRecord[] =
     fieldValue && isToOneObject
-      ? [fieldValue]
-      : fieldValue?.edges.map(({ node }: { node: ObjectRecord }) => node) ?? [];
+      ? [fieldValue as ObjectRecord]
+      : ((fieldValue as ObjectRecord[]) ?? []);
+
   const relationRecordIds = relationRecords.map(({ id }) => id);
 
-  const dropdownId = `record-field-card-relation-picker-${fieldDefinition.label}`;
+  const dropdownId = `record-field-card-relation-picker-${fieldDefinition.label}-${recordId}`;
 
   const { closeDropdown, isDropdownOpen } = useDropdown(dropdownId);
 
@@ -100,16 +114,46 @@ export const RecordDetailRelationSection = () => {
     });
   };
 
+  const { updateRelation } = useUpdateRelationFromManyFieldInput({
+    scopeId: dropdownId,
+  });
+
   const filterQueryParams: FilterQueryParams = {
     filter: {
       [relationFieldMetadataItem?.name || '']: {
-        [ViewFilterOperand.Is]: [entityId],
+        [ViewFilterOperand.Is]: [recordId],
       },
     },
   };
   const filterLinkHref = `/objects/${
     relationObjectMetadataItem.namePlural
   }?${qs.stringify(filterQueryParams)}`;
+
+  const showContent = () => {
+    if (loading) {
+      return (
+        <RecordDetailRelationSectionSkeletonLoader
+          numSkeletons={fieldName === 'people' ? 2 : 1}
+        />
+      );
+    }
+
+    return relationRecords.length ? (
+      <RecordDetailRelationRecordsList relationRecords={relationRecords} />
+    ) : (
+      <RecordDetailRelationRecordsListEmptyState
+        relationObjectMetadataItem={relationObjectMetadataItem}
+      />
+    );
+  };
+
+  const { createNewRecordAndOpenRightDrawer } =
+    useAddNewRecordAndOpenRightDrawer({
+      relationObjectMetadataNameSingular,
+      relationObjectMetadataItem,
+      relationFieldMetadataItem,
+      recordId,
+    });
 
   return (
     <RecordDetailSection>
@@ -139,15 +183,28 @@ export const RecordDetailRelationSection = () => {
               }
               dropdownComponents={
                 <RelationPickerScope relationPickerScopeId={dropdownId}>
-                  <SingleEntitySelectMenuItemsWithSearch
-                    EmptyIcon={IconForbid}
-                    onEntitySelected={handleRelationPickerEntitySelected}
-                    selectedRelationRecordIds={relationRecordIds}
-                    relationObjectNameSingular={
-                      relationObjectMetadataNameSingular
-                    }
-                    relationPickerScopeId={dropdownId}
-                  />
+                  {isToOneObject ? (
+                    <SingleEntitySelectMenuItemsWithSearch
+                      EmptyIcon={IconForbid}
+                      onEntitySelected={handleRelationPickerEntitySelected}
+                      selectedRelationRecordIds={relationRecordIds}
+                      relationObjectNameSingular={
+                        relationObjectMetadataNameSingular
+                      }
+                      relationPickerScopeId={dropdownId}
+                      onCreate={createNewRecordAndOpenRightDrawer}
+                    />
+                  ) : (
+                    <>
+                      <ObjectMetadataItemsRelationPickerEffect />
+                      <RelationFromManyFieldInputMultiRecordsEffect />
+                      <MultiRecordSelect
+                        onCreate={createNewRecordAndOpenRightDrawer}
+                        onChange={updateRelation}
+                        onSubmit={closeDropdown}
+                      />
+                    </>
+                  )}
                 </RelationPickerScope>
               }
               dropdownHotkeyScope={{
@@ -157,13 +214,7 @@ export const RecordDetailRelationSection = () => {
           </DropdownScope>
         }
       />
-      {relationRecords.length ? (
-        <RecordDetailRelationRecordsList relationRecords={relationRecords} />
-      ) : (
-        <RecordDetailRelationRecordsListEmptyState
-          relationObjectMetadataItem={relationObjectMetadataItem}
-        />
-      )}
+      {showContent()}
     </RecordDetailSection>
   );
 };

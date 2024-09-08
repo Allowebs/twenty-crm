@@ -6,27 +6,25 @@ import {
   YogaDriverConfig,
   YogaDriverServerContext,
 } from '@graphql-yoga/nestjs';
-import { GraphQLSchema, GraphQLError } from 'graphql';
-import GraphQLJSON from 'graphql-type-json';
-import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
-import { GraphQLSchemaWithContext, YogaInitialContext } from 'graphql-yoga';
 import * as Sentry from '@sentry/node';
+import { GraphQLError, GraphQLSchema } from 'graphql';
+import GraphQLJSON from 'graphql-type-json';
+import { GraphQLSchemaWithContext, YogaInitialContext } from 'graphql-yoga';
+import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
-import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
-import { CoreEngineModule } from 'src/engine/core-modules/core-engine.module';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { useThrottler } from 'src/engine/api/graphql/graphql-config/hooks/use-throttler';
 import { WorkspaceSchemaFactory } from 'src/engine/api/graphql/workspace-schema.factory';
+import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
+import { AuthContext } from 'src/engine/core-modules/auth/types/auth-context.type';
+import { CoreEngineModule } from 'src/engine/core-modules/core-engine.module';
+import { useGraphQLErrorHandlerHook } from 'src/engine/core-modules/graphql/hooks/use-graphql-error-handler.hook';
+import { User } from 'src/engine/core-modules/user/user.entity';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 import { ExceptionHandlerService } from 'src/engine/integrations/exception-handler/exception-handler.service';
+import { useSentryTracing } from 'src/engine/integrations/exception-handler/hooks/use-sentry-tracing';
 import { handleExceptionAndConvertToGraphQLError } from 'src/engine/utils/global-exception-handler.util';
 import { renderApolloPlayground } from 'src/engine/utils/render-apollo-playground.util';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
-import { useExceptionHandler } from 'src/engine/integrations/exception-handler/hooks/use-exception-handler.hook';
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { useThrottler } from 'src/engine/api/graphql/graphql-config/hooks/use-throttler';
-import { JwtData } from 'src/engine/core-modules/auth/types/jwt-data.type';
-import { useSentryTracing } from 'src/engine/integrations/exception-handler/hooks/use-sentry-tracing';
-
-import { CreateContextFactory } from './factories/create-context.factory';
 
 export interface GraphQLContext extends YogaDriverServerContext<'express'> {
   user?: User;
@@ -38,7 +36,6 @@ export class GraphQLConfigService
   implements GqlOptionsFactory<YogaDriverConfig<'express'>>
 {
   constructor(
-    private readonly createContextFactory: CreateContextFactory,
     private readonly tokenService: TokenService,
     private readonly exceptionHandlerService: ExceptionHandlerService,
     private readonly environmentService: EnvironmentService,
@@ -52,10 +49,10 @@ export class GraphQLConfigService
         ttl: this.environmentService.get('API_RATE_LIMITING_TTL'),
         limit: this.environmentService.get('API_RATE_LIMITING_LIMIT'),
         identifyFn: (context) => {
-          return context.user?.id ?? context.req.ip ?? 'anonymous';
+          return context.req.user?.id ?? context.req.ip ?? 'anonymous';
         },
       }),
-      useExceptionHandler({
+      useGraphQLErrorHandlerHook({
         exceptionHandlerService: this.exceptionHandlerService,
       }),
     ];
@@ -65,11 +62,10 @@ export class GraphQLConfigService
     }
 
     const config: YogaDriverConfig = {
-      context: (context) => this.createContextFactory.create(context),
       autoSchemaFile: true,
       include: [CoreEngineModule],
       conditionalSchema: async (context) => {
-        let user: User | undefined;
+        let user: User | null | undefined;
         let workspace: Workspace | undefined;
 
         try {
@@ -78,9 +74,6 @@ export class GraphQLConfigService
           }
 
           const data = await this.tokenService.validateToken(context.req);
-
-          user = data.user;
-          workspace = data.workspace;
 
           return await this.createSchema(context, data);
         } catch (error) {
@@ -140,13 +133,15 @@ export class GraphQLConfigService
 
   async createSchema(
     context: YogaDriverServerContext<'express'> & YogaInitialContext,
-    data: JwtData,
+    data: AuthContext,
   ): Promise<GraphQLSchemaWithContext<YogaDriverServerContext<'express'>>> {
     // Create a new contextId for each request
     const contextId = ContextIdFactory.create();
 
-    // Register the request in the contextId
-    this.moduleRef.registerRequestByContextId(context.req, contextId);
+    if (this.moduleRef.registerRequestByContextId) {
+      // Register the request in the contextId
+      this.moduleRef.registerRequestByContextId(context.req, contextId);
+    }
 
     // Resolve the WorkspaceSchemaFactory for the contextId
     const workspaceFactory = await this.moduleRef.resolve(
@@ -157,9 +152,6 @@ export class GraphQLConfigService
       },
     );
 
-    return await workspaceFactory.createGraphQLSchema(
-      data.workspace.id,
-      data.user?.id,
-    );
+    return await workspaceFactory.createGraphQLSchema(data);
   }
 }

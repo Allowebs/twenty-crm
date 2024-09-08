@@ -1,6 +1,7 @@
-import { useState } from 'react';
 import styled from '@emotion/styled';
+import { useState } from 'react';
 import { useRecoilValue } from 'recoil';
+import { H2Title, IconTrash, IconUsers } from 'twenty-ui';
 
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
@@ -8,20 +9,14 @@ import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSi
 import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings, IconTrash } from '@/ui/display/icon';
-import { H1Title } from '@/ui/display/typography/components/H1Title';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
 import { IconButton } from '@/ui/input/button/components/IconButton';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
 import { Section } from '@/ui/layout/section/components/Section';
-import { WorkspaceInviteLink } from '@/workspace/components/WorkspaceInviteLink';
-import { WorkspaceMemberCard } from '@/workspace/components/WorkspaceMemberCard';
 import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
-
-const StyledH1Title = styled(H1Title)`
-  margin-bottom: 0;
-`;
+import { WorkspaceInviteLink } from '@/workspace/components/WorkspaceInviteLink';
+import { WorkspaceInviteTeam } from '@/workspace/components/WorkspaceInviteTeam';
+import { WorkspaceMemberCard } from '@/workspace/components/WorkspaceMemberCard';
 
 const StyledButtonContainer = styled.div`
   align-items: center;
@@ -51,14 +46,20 @@ export const SettingsWorkspaceMembers = () => {
   };
 
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+    <SubMenuTopBarContainer Icon={IconUsers} title="Members">
       <SettingsPageContainer>
-        <StyledH1Title title="Members" />
+        <Section>
+          <H2Title
+            title="Invite by email"
+            description="Send an invite email to your team"
+          />
+          <WorkspaceInviteTeam />
+        </Section>
         {currentWorkspace?.inviteHash && (
           <Section>
             <H2Title
-              title="Invite"
-              description="Send an invitation to use Twenty"
+              title="Or send an invite link"
+              description="Copy and send an invite link directly"
             />
             <WorkspaceInviteLink
               inviteLink={`${window.location.origin}/invite/${currentWorkspace?.inviteHash}`}

@@ -3,9 +3,9 @@ import { gql } from '@apollo/client';
 export const query = gql`
   query FindManyPeople(
     $filter: PersonFilterInput
-    $orderBy: PersonOrderByInput
+    $orderBy: [PersonOrderByInput]
     $lastCursor: String
-    $limit: Float = 60
+    $limit: Int = 60
   ) {
     people(
       filter: $filter
@@ -25,7 +25,6 @@ export const query = gql`
                 updatedAt
                 companyId
                 stage
-                probability
                 closeDate
                 amount {
                   amountMicros
@@ -37,8 +36,8 @@ export const query = gql`
             }
           }
           xLink {
-            label
-            url
+            primaryLinkLabel
+            primaryLinkUrl
           }
           id
           pointOfContactForOpportunities {
@@ -50,7 +49,6 @@ export const query = gql`
                 updatedAt
                 companyId
                 stage
-                probability
                 closeDate
                 amount {
                   amountMicros
@@ -65,12 +63,12 @@ export const query = gql`
           company {
             id
             xLink {
-              label
-              url
+              primaryLinkLabel
+              primaryLinkUrl
             }
             linkedinLink {
-              label
-              url
+              primaryLinkLabel
+              primaryLinkUrl
             }
             domainName
             annualRecurringRevenue {
@@ -78,7 +76,9 @@ export const query = gql`
               currencyCode
             }
             createdAt
-            address
+            address {
+              adressCity
+            }
             updatedAt
             name
             accountOwnerId
@@ -139,8 +139,8 @@ export const query = gql`
           }
           phone
           linkedinLink {
-            label
-            url
+            primaryLinkLabel
+            primaryLinkUrl
           }
           updatedAt
           avatarUrl
@@ -166,7 +166,7 @@ export const variables = {
         { not: { id: { in: ['1', '2'] } } },
       ],
     },
-    orderBy: { name: 'AscNullsLast' },
+    orderBy: [{ name: 'AscNullsLast' }],
   },
   filteredSelectedEntities: {
     limit: 60,
@@ -176,12 +176,12 @@ export const variables = {
         { id: { in: ['1'] } },
       ],
     },
-    orderBy: { name: 'AscNullsLast' },
+    orderBy: [{ name: 'AscNullsLast' }],
   },
   selectedEntities: {
     limit: 60,
     filter: { id: { in: ['1'] } },
-    orderBy: { name: 'AscNullsLast' },
+    orderBy: [{ name: 'AscNullsLast' }],
   },
 };
 

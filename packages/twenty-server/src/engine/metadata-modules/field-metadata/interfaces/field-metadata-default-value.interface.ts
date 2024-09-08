@@ -1,15 +1,19 @@
 import {
+  FieldMetadataDefaultActor,
+  FieldMetadataDefaultValueAddress,
   FieldMetadataDefaultValueBoolean,
   FieldMetadataDefaultValueCurrency,
   FieldMetadataDefaultValueDateTime,
+  FieldMetadataDefaultValueEmails,
   FieldMetadataDefaultValueFullName,
-  FieldMetadataDefaultValueRawJson,
   FieldMetadataDefaultValueLink,
-  FieldMetadataDefaultValueNumber,
-  FieldMetadataDefaultValueString,
-  FieldMetadataDefaultValueStringArray,
-  FieldMetadataDefaultValueUuidFunction,
+  FieldMetadataDefaultValueLinks,
   FieldMetadataDefaultValueNowFunction,
+  FieldMetadataDefaultValueNumber,
+  FieldMetadataDefaultValueRawJson,
+  FieldMetadataDefaultValueRichText,
+  FieldMetadataDefaultValueString,
+  FieldMetadataDefaultValueUuidFunction,
 } from 'src/engine/metadata-modules/field-metadata/dtos/default-value.input';
 import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
@@ -24,21 +28,28 @@ type FieldMetadataDefaultValueMapping = {
   [FieldMetadataType.TEXT]: FieldMetadataDefaultValueString;
   [FieldMetadataType.PHONE]: FieldMetadataDefaultValueString;
   [FieldMetadataType.EMAIL]: FieldMetadataDefaultValueString;
+  [FieldMetadataType.EMAILS]: FieldMetadataDefaultValueEmails;
   [FieldMetadataType.DATE_TIME]:
+    | FieldMetadataDefaultValueDateTime
+    | FieldMetadataDefaultValueNowFunction;
+  [FieldMetadataType.DATE]:
     | FieldMetadataDefaultValueDateTime
     | FieldMetadataDefaultValueNowFunction;
   [FieldMetadataType.BOOLEAN]: FieldMetadataDefaultValueBoolean;
   [FieldMetadataType.NUMBER]: FieldMetadataDefaultValueNumber;
   [FieldMetadataType.POSITION]: FieldMetadataDefaultValueNumber;
   [FieldMetadataType.NUMERIC]: FieldMetadataDefaultValueString;
-  [FieldMetadataType.PROBABILITY]: FieldMetadataDefaultValueNumber;
   [FieldMetadataType.LINK]: FieldMetadataDefaultValueLink;
+  [FieldMetadataType.LINKS]: FieldMetadataDefaultValueLinks;
   [FieldMetadataType.CURRENCY]: FieldMetadataDefaultValueCurrency;
   [FieldMetadataType.FULL_NAME]: FieldMetadataDefaultValueFullName;
+  [FieldMetadataType.ADDRESS]: FieldMetadataDefaultValueAddress;
   [FieldMetadataType.RATING]: FieldMetadataDefaultValueString;
   [FieldMetadataType.SELECT]: FieldMetadataDefaultValueString;
-  [FieldMetadataType.MULTI_SELECT]: FieldMetadataDefaultValueStringArray;
+  [FieldMetadataType.MULTI_SELECT]: FieldMetadataDefaultValueString;
   [FieldMetadataType.RAW_JSON]: FieldMetadataDefaultValueRawJson;
+  [FieldMetadataType.RICH_TEXT]: FieldMetadataDefaultValueRichText;
+  [FieldMetadataType.ACTOR]: FieldMetadataDefaultActor;
 };
 
 export type FieldMetadataClassValidation =

@@ -1,10 +1,13 @@
+import styled from '@emotion/styled';
 import { useEffect, useRef, useState } from 'react';
 import ReactPhoneNumberInput from 'react-phone-number-input';
-import styled from '@emotion/styled';
+import { TEXT_INPUT_STYLE } from 'twenty-ui';
 
+import { LightCopyIconButton } from '@/object-record/record-field/components/LightCopyIconButton';
 import { useRegisterInputEvents } from '@/object-record/record-field/meta-types/input/hooks/useRegisterInputEvents';
-import { CountryPickerDropdownButton } from '@/ui/input/components/internal/phone/components/CountryPickerDropdownButton';
+import { PhoneCountryPickerDropdownButton } from '@/ui/input/components/internal/phone/components/PhoneCountryPickerDropdownButton';
 
+import { E164Number } from 'libphonenumber-js';
 import 'react-phone-number-input/style.css';
 
 const StyledContainer = styled.div`
@@ -13,17 +16,20 @@ const StyledContainer = styled.div`
   border: none;
   border-radius: ${({ theme }) => theme.border.radius.sm};
   box-shadow: ${({ theme }) => theme.boxShadow.strong};
+  width: 100%;
 
   display: flex;
-  justify-content: center;
+  justify-content: start;
 `;
 
 const StyledCustomPhoneInput = styled(ReactPhoneNumberInput)`
   font-family: ${({ theme }) => theme.font.family};
   height: 32px;
+  ${TEXT_INPUT_STYLE}
+  padding: 0;
 
   .PhoneInputInput {
-    background: ${({ theme }) => theme.background.transparent.secondary};
+    background: none;
     border: none;
     color: ${({ theme }) => theme.font.color.primary};
 
@@ -43,6 +49,14 @@ const StyledCustomPhoneInput = styled(ReactPhoneNumberInput)`
     border-radius: ${({ theme }) => theme.border.radius.xs};
     height: 12px;
   }
+  width: calc(100% - ${({ theme }) => theme.spacing(8)});
+`;
+
+const StyledLightIconButtonContainer = styled.div`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 0;
 `;
 
 export type PhoneInputProps = {
@@ -56,6 +70,7 @@ export type PhoneInputProps = {
   onClickOutside: (event: MouseEvent | TouchEvent, inputValue: string) => void;
   onChange?: (newText: string) => void;
   hotkeyScope: string;
+  copyButton?: boolean;
 };
 
 export const PhoneInput = ({
@@ -68,14 +83,16 @@ export const PhoneInput = ({
   onClickOutside,
   hotkeyScope,
   onChange,
+  copyButton = true,
 }: PhoneInputProps) => {
   const [internalValue, setInternalValue] = useState<string | undefined>(value);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
 
-  const handleChange = (newValue: string) => {
+  const handleChange = (newValue: E164Number) => {
     setInternalValue(newValue);
-    onChange?.(newValue);
+    onChange?.(newValue as string);
   };
 
   useEffect(() => {
@@ -84,6 +101,7 @@ export const PhoneInput = ({
 
   useRegisterInputEvents({
     inputRef: wrapperRef,
+    copyRef: copyRef,
     inputValue: internalValue ?? '',
     onEnter,
     onEscape,
@@ -102,8 +120,13 @@ export const PhoneInput = ({
         onChange={handleChange}
         international={true}
         withCountryCallingCode={true}
-        countrySelectComponent={CountryPickerDropdownButton}
+        countrySelectComponent={PhoneCountryPickerDropdownButton}
       />
+      {copyButton && (
+        <StyledLightIconButtonContainer ref={copyRef}>
+          <LightCopyIconButton copyText={value} />
+        </StyledLightIconButtonContainer>
+      )}
     </StyledContainer>
   );
 };

@@ -1,32 +1,19 @@
-import { useRecoilState } from 'recoil';
-
-import {
-  IconLayoutSidebarRightCollapse,
-  IconLayoutSidebarRightExpand,
-} from '@/ui/display/icon';
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
+import { useRightDrawer } from '@/ui/layout/right-drawer/hooks/useRightDrawer';
+import { UndecoratedLink } from '@/ui/navigation/link/components/UndecoratedLink';
+import { IconExternalLink } from 'twenty-ui';
 
-import { isRightDrawerExpandedState } from '../states/isRightDrawerExpandedState';
-
-export const RightDrawerTopBarExpandButton = () => {
-  const [isRightDrawerExpanded, setIsRightDrawerExpanded] = useRecoilState(
-    isRightDrawerExpandedState,
-  );
-
-  const handleButtonClick = () => {
-    setIsRightDrawerExpanded(!isRightDrawerExpanded);
-  };
+export const RightDrawerTopBarExpandButton = ({ to }: { to: string }) => {
+  const { closeRightDrawer } = useRightDrawer();
 
   return (
-    <LightIconButton
-      size="medium"
-      accent="tertiary"
-      Icon={
-        isRightDrawerExpanded
-          ? IconLayoutSidebarRightCollapse
-          : IconLayoutSidebarRightExpand
-      }
-      onClick={handleButtonClick}
-    />
+    <UndecoratedLink to={to}>
+      <LightIconButton
+        size="medium"
+        accent="tertiary"
+        Icon={IconExternalLink}
+        onClick={closeRightDrawer}
+      />
+    </UndecoratedLink>
   );
 };

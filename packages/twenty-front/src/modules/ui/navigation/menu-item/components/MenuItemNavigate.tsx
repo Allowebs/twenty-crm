@@ -1,7 +1,5 @@
 import { useTheme } from '@emotion/react';
-
-import { IconChevronRight } from '@/ui/display/icon';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconChevronRight, IconComponent } from 'twenty-ui';
 
 import { MenuItemLeftContent } from '../internals/components/MenuItemLeftContent';
 import {
@@ -29,7 +27,10 @@ export const MenuItemNavigate = ({
       <StyledMenuItemLeftContent>
         <MenuItemLeftContent LeftIcon={LeftIcon} text={text} />
       </StyledMenuItemLeftContent>
-      <IconChevronRight size={theme.icon.size.sm} />
+      <IconChevronRight
+        size={theme.icon.size.sm}
+        color={theme.font.color.tertiary}
+      />
     </StyledMenuItemBase>
   );
 };

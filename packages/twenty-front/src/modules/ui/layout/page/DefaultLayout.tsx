@@ -1,12 +1,7 @@
-import { ReactNode, useMemo } from 'react';
 import { css, Global, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { motion } from 'framer-motion';
-import { AnimatePresence, LayoutGroup } from 'framer-motion';
-
-import { AuthModal } from '@/auth/components/Modal';
-import { useOnboardingStatus } from '@/auth/hooks/useOnboardingStatus';
-import { OnboardingStatus } from '@/auth/utils/getOnboardingStatus';
+import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
+import { Outlet } from 'react-router-dom';
 import { CommandMenu } from '@/command-menu/components/CommandMenu';
 import { AppErrorBoundary } from '@/error-handler/components/AppErrorBoundary';
 import { KeyboardShortcutMenu } from '@/keyboard-shortcut-menu/components/KeyboardShortcutMenu';
@@ -15,17 +10,17 @@ import { MobileNavigationBar } from '@/navigation/components/MobileNavigationBar
 import { useIsSettingsPage } from '@/navigation/hooks/useIsSettingsPage';
 import { OBJECT_SETTINGS_WIDTH } from '@/settings/data-model/constants/ObjectSettings';
 import { SignInBackgroundMockPage } from '@/sign-in-background-mock/components/SignInBackgroundMockPage';
-import { AppPath } from '@/types/AppPath';
+import { useShowAuthModal } from '@/ui/layout/hooks/useShowAuthModal';
 import { DESKTOP_NAV_DRAWER_WIDTHS } from '@/ui/navigation/navigation-drawer/constants/DesktopNavDrawerWidths';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { useScreenSize } from '@/ui/utilities/screen-size/hooks/useScreenSize';
-import { useIsMatchingLocation } from '~/hooks/useIsMatchingLocation';
+import { AuthModal } from '@/auth/components/AuthModal';
 
 const StyledLayout = styled.div`
   background: ${({ theme }) => theme.background.noisy};
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   position: relative;
   scrollbar-color: ${({ theme }) => theme.border.color.medium};
   scrollbar-width: 4px;
@@ -63,32 +58,12 @@ const StyledMainContainer = styled.div`
   overflow: hidden;
 `;
 
-type DefaultLayoutProps = {
-  children: ReactNode;
-};
-
-export const DefaultLayout = ({ children }: DefaultLayoutProps) => {
-  const onboardingStatus = useOnboardingStatus();
+export const DefaultLayout = () => {
   const isMobile = useIsMobile();
   const isSettingsPage = useIsSettingsPage();
   const theme = useTheme();
-  const widowsWidth = useScreenSize().width;
-  const isMatchingLocation = useIsMatchingLocation();
-  const showAuthModal = useMemo(() => {
-    return (
-      (onboardingStatus &&
-        [
-          OnboardingStatus.Incomplete,
-          OnboardingStatus.OngoingUserCreation,
-          OnboardingStatus.OngoingProfileCreation,
-          OnboardingStatus.OngoingWorkspaceActivation,
-        ].includes(onboardingStatus)) ||
-      isMatchingLocation(AppPath.ResetPassword) ||
-      (isMatchingLocation(AppPath.PlanRequired) &&
-        (OnboardingStatus.CompletedWithoutSubscription ||
-          OnboardingStatus.Canceled))
-    );
-  }, [isMatchingLocation, onboardingStatus]);
+  const windowsWidth = useScreenSize().width;
+  const showAuthModal = useShowAuthModal();
 
   return (
     <>
@@ -107,7 +82,7 @@ export const DefaultLayout = ({ children }: DefaultLayoutProps) => {
           animate={{
             marginLeft:
               isSettingsPage && !isMobile
-                ? (widowsWidth -
+                ? (windowsWidth -
                     (OBJECT_SETTINGS_WIDTH +
                       DESKTOP_NAV_DRAWER_WIDTHS.menu +
                       64)) /
@@ -125,12 +100,16 @@ export const DefaultLayout = ({ children }: DefaultLayoutProps) => {
                 <SignInBackgroundMockPage />
                 <AnimatePresence mode="wait">
                   <LayoutGroup>
-                    <AuthModal>{children}</AuthModal>
+                    <AuthModal>
+                      <Outlet />
+                    </AuthModal>
                   </LayoutGroup>
                 </AnimatePresence>
               </>
             ) : (
-              <AppErrorBoundary>{children}</AppErrorBoundary>
+              <AppErrorBoundary>
+                <Outlet />
+              </AppErrorBoundary>
             )}
           </StyledMainContainer>
         </StyledPageContainer>

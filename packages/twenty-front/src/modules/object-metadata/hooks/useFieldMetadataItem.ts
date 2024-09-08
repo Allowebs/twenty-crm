@@ -1,10 +1,8 @@
-import { v4 } from 'uuid';
-
+import { useDeleteOneRelationMetadataItem } from '@/object-metadata/hooks/useDeleteOneRelationMetadataItem';
 import { Field } from '~/generated/graphql';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
-import { FieldMetadataOption } from '../types/FieldMetadataOption';
 import { formatFieldMetadataItemInput } from '../utils/formatFieldMetadataItemInput';
 
 import { useCreateOneFieldMetadataItem } from './useCreateOneFieldMetadataItem';
@@ -15,44 +13,26 @@ export const useFieldMetadataItem = () => {
   const { createOneFieldMetadataItem } = useCreateOneFieldMetadataItem();
   const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
   const { deleteOneFieldMetadataItem } = useDeleteOneFieldMetadataItem();
+  const { deleteOneRelationMetadataItem } = useDeleteOneRelationMetadataItem();
 
   const createMetadataField = (
-    input: Pick<Field, 'label' | 'icon' | 'description'> & {
-      defaultValue?: unknown;
+    input: Pick<
+      Field,
+      'label' | 'icon' | 'description' | 'defaultValue' | 'type' | 'options'
+    > & {
       objectMetadataId: string;
-      options?: Omit<FieldMetadataOption, 'id'>[];
-      type: FieldMetadataType;
     },
   ) => {
-    const formatedInput = formatFieldMetadataItemInput(input);
-    const defaultValue = input.defaultValue
-      ? `'${input.defaultValue}'`
-      : formatedInput.defaultValue ?? undefined;
+    const formattedInput = formatFieldMetadataItemInput(input);
 
     return createOneFieldMetadataItem({
-      ...formatedInput,
-      defaultValue,
+      ...formattedInput,
       objectMetadataId: input.objectMetadataId,
       type: input.type,
+      label: formattedInput.label ?? '',
+      name: formattedInput.name ?? '',
     });
   };
-
-  const editMetadataField = (
-    input: Pick<Field, 'id' | 'label' | 'icon' | 'description'> & {
-      options?: FieldMetadataOption[];
-    },
-  ) =>
-    updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: input.id,
-      updatePayload: formatFieldMetadataItemInput({
-        ...input,
-        // In Edit mode, all options need an id,
-        // so we generate an id for newly created options.
-        options: input.options?.map((option) =>
-          option.id ? option : { ...option, id: v4() },
-        ),
-      }),
-    });
 
   const activateMetadataField = (metadataField: FieldMetadataItem) =>
     updateOneFieldMetadataItem({
@@ -60,20 +40,24 @@ export const useFieldMetadataItem = () => {
       updatePayload: { isActive: true },
     });
 
-  const disableMetadataField = (metadataField: FieldMetadataItem) =>
+  const deactivateMetadataField = (metadataField: FieldMetadataItem) =>
     updateOneFieldMetadataItem({
       fieldMetadataIdToUpdate: metadataField.id,
       updatePayload: { isActive: false },
     });
 
-  const eraseMetadataField = (metadataField: FieldMetadataItem) =>
-    deleteOneFieldMetadataItem(metadataField.id);
+  const deleteMetadataField = (metadataField: FieldMetadataItem) => {
+    return metadataField.type === FieldMetadataType.Relation
+      ? deleteOneRelationMetadataItem(
+          metadataField.relationDefinition?.relationId,
+        )
+      : deleteOneFieldMetadataItem(metadataField.id);
+  };
 
   return {
     activateMetadataField,
     createMetadataField,
-    disableMetadataField,
-    eraseMetadataField,
-    editMetadataField,
+    deactivateMetadataField,
+    deleteMetadataField,
   };
 };

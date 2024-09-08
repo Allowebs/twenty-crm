@@ -1,8 +1,9 @@
 import { Meta, StoryObj } from '@storybook/react';
-import { expect, fn, userEvent, within } from '@storybook/test';
+import { expect, userEvent, within } from '@storybook/test';
+import { ComponentDecorator } from 'twenty-ui';
 
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
+import { FormProviderDecorator } from '~/testing/decorators/FormProviderDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
 import { SettingsDataModelFieldTypeSelect } from '../SettingsDataModelFieldTypeSelect';
@@ -11,11 +12,7 @@ const meta: Meta<typeof SettingsDataModelFieldTypeSelect> = {
   title:
     'Modules/Settings/DataModel/Fields/Forms/SettingsDataModelFieldTypeSelect',
   component: SettingsDataModelFieldTypeSelect,
-  decorators: [ComponentDecorator],
-  args: {
-    onChange: fn(),
-    value: FieldMetadataType.Text,
-  },
+  decorators: [FormProviderDecorator, ComponentDecorator],
   parameters: {
     container: { width: 512 },
     msw: graphqlMocks,
@@ -27,15 +24,9 @@ type Story = StoryObj<typeof SettingsDataModelFieldTypeSelect>;
 
 export const Default: Story = {};
 
-export const Disabled: Story = {
-  args: {
-    disabled: true,
-  },
-};
-
 export const WithOpenSelect: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    const canvas = within(document.body);
 
     const inputField = await canvas.findByText('Text');
 
@@ -52,8 +43,8 @@ export const WithExcludedFieldTypes: Story = {
   args: {
     excludedFieldTypes: [FieldMetadataType.Uuid, FieldMetadataType.Numeric],
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  play: async () => {
+    const canvas = within(document.body);
 
     const inputField = await canvas.findByText('Text');
 

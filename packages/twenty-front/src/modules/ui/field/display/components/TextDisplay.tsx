@@ -1,14 +1,9 @@
-import { OverflowingTextWithTooltip } from '../../../display/tooltip/OverflowingTextWithTooltip';
-
-import { EllipsisDisplay } from './EllipsisDisplay';
+import { OverflowingTextWithTooltip } from 'twenty-ui';
 
 type TextDisplayProps = {
   text: string;
-  maxWidth?: number;
 };
 
-export const TextDisplay = ({ text, maxWidth }: TextDisplayProps) => (
-  <EllipsisDisplay maxWidth={maxWidth}>
-    <OverflowingTextWithTooltip text={text} />
-  </EllipsisDisplay>
+export const TextDisplay = ({ text }: TextDisplayProps) => (
+  <OverflowingTextWithTooltip text={text} />
 );

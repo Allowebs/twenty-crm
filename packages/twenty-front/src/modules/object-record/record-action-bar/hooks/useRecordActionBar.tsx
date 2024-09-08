@@ -1,51 +1,42 @@
-import { useCallback, useMemo } from 'react';
 import { isNonEmptyString } from '@sniptt/guards';
+import { useCallback, useMemo, useState } from 'react';
 import { useRecoilCallback, useSetRecoilState } from 'recoil';
+import { IconFileExport, IconHeart, IconHeartOff, IconTrash } from 'twenty-ui';
 
 import { useFavorites } from '@/favorites/hooks/useFavorites';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { useDeleteManyRecords } from '@/object-record/hooks/useDeleteManyRecords';
-import { useExecuteQuickActionOnOneRecord } from '@/object-record/hooks/useExecuteQuickActionOnOneRecord';
-import { useExportTableData } from '@/object-record/record-index/options/hooks/useExportTableData';
-import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { DELETE_MAX_COUNT } from '@/object-record/constants/DeleteMaxCount';
+import { useDeleteTableData } from '@/object-record/record-index/options/hooks/useDeleteTableData';
 import {
-  IconClick,
-  IconFileExport,
-  IconHeart,
-  IconHeartOff,
-  IconMail,
-  IconPuzzle,
-  IconTrash,
-} from '@/ui/display/icon';
+  displayedExportProgress,
+  useExportTableData,
+} from '@/object-record/record-index/options/hooks/useExportTableData';
+import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
+import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
 import { actionBarEntriesState } from '@/ui/navigation/action-bar/states/actionBarEntriesState';
 import { contextMenuEntriesState } from '@/ui/navigation/context-menu/states/contextMenuEntriesState';
 import { ContextMenuEntry } from '@/ui/navigation/context-menu/types/ContextMenuEntry';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
 import { isDefined } from '~/utils/isDefined';
 
 type useRecordActionBarProps = {
   objectMetadataItem: ObjectMetadataItem;
   selectedRecordIds: string[];
   callback?: () => void;
+  totalNumberOfRecordsSelected?: number;
 };
 
 export const useRecordActionBar = ({
   objectMetadataItem,
   selectedRecordIds,
   callback,
+  totalNumberOfRecordsSelected,
 }: useRecordActionBarProps) => {
   const setContextMenuEntries = useSetRecoilState(contextMenuEntriesState);
   const setActionBarEntriesState = useSetRecoilState(actionBarEntriesState);
+  const [isDeleteRecordsModalOpen, setIsDeleteRecordsModalOpen] =
+    useState(false);
 
   const { createFavorite, favorites, deleteFavorite } = useFavorites();
-
-  const { deleteManyRecords } = useDeleteManyRecords({
-    objectNameSingular: objectMetadataItem.nameSingular,
-  });
-
-  const { executeQuickActionOnOneRecord } = useExecuteQuickActionOnOneRecord({
-    objectNameSingular: objectMetadataItem.nameSingular,
-  });
 
   const handleFavoriteButtonClick = useRecoilCallback(
     ({ snapshot }) =>
@@ -82,47 +73,78 @@ export const useRecordActionBar = ({
     ],
   );
 
-  const handleDeleteClick = useCallback(async () => {
-    callback?.();
-    await deleteManyRecords(selectedRecordIds);
-  }, [callback, deleteManyRecords, selectedRecordIds]);
-
-  const handleExecuteQuickActionOnClick = useCallback(async () => {
-    callback?.();
-    await Promise.all(
-      selectedRecordIds.map(async (recordId) => {
-        await executeQuickActionOnOneRecord(recordId);
-      }),
-    );
-  }, [callback, executeQuickActionOnOneRecord, selectedRecordIds]);
-
-  const { progress, download } = useExportTableData({
+  const baseTableDataParams = {
     delayMs: 100,
-    filename: `${objectMetadataItem.nameSingular}.csv`,
     objectNameSingular: objectMetadataItem.nameSingular,
     recordIndexId: objectMetadataItem.namePlural,
+  };
+
+  const { deleteTableData } = useDeleteTableData(baseTableDataParams);
+
+  const handleDeleteClick = useCallback(() => {
+    deleteTableData(selectedRecordIds);
+  }, [deleteTableData, selectedRecordIds]);
+
+  const { progress, download } = useExportTableData({
+    ...baseTableDataParams,
+    filename: `${objectMetadataItem.nameSingular}.csv`,
   });
 
-  const baseActions: ContextMenuEntry[] = useMemo(
-    () => [
-      {
-        label: `Delete (${selectedRecordIds.length})`,
-        Icon: IconTrash,
-        accent: 'danger',
-        onClick: () => handleDeleteClick(),
-      },
-      {
-        label: `${progress === undefined ? `Export` : `Export (${progress}%)`}`,
-        Icon: IconFileExport,
-        accent: 'default',
-        onClick: () => download(),
-      },
-    ],
-    [handleDeleteClick, download, progress, selectedRecordIds],
-  );
+  const isRemoteObject = objectMetadataItem.isRemote;
 
-  const dataExecuteQuickActionOnmentEnabled = useIsFeatureEnabled(
-    'IS_QUICK_ACTIONS_ENABLED',
+  const numberOfSelectedRecords =
+    totalNumberOfRecordsSelected ?? selectedRecordIds.length;
+  const canDelete =
+    !isRemoteObject && numberOfSelectedRecords < DELETE_MAX_COUNT;
+
+  const menuActions: ContextMenuEntry[] = useMemo(
+    () =>
+      [
+        {
+          label: displayedExportProgress(progress),
+          Icon: IconFileExport,
+          accent: 'default',
+          onClick: () => download(),
+        } satisfies ContextMenuEntry,
+        canDelete
+          ? ({
+              label: 'Delete',
+              Icon: IconTrash,
+              accent: 'danger',
+              onClick: () => {
+                setIsDeleteRecordsModalOpen(true);
+              },
+              ConfirmationModal: (
+                <ConfirmationModal
+                  isOpen={isDeleteRecordsModalOpen}
+                  setIsOpen={setIsDeleteRecordsModalOpen}
+                  title={`Delete ${numberOfSelectedRecords} ${
+                    numberOfSelectedRecords === 1 ? `record` : 'records'
+                  }`}
+                  subtitle={`Are you sure you want to delete ${
+                    numberOfSelectedRecords === 1
+                      ? 'this record'
+                      : 'these records'
+                  }? ${
+                    numberOfSelectedRecords === 1 ? 'It' : 'They'
+                  } can be recovered from the Options menu.`}
+                  onConfirmClick={() => handleDeleteClick()}
+                  deleteButtonText={`Delete ${
+                    numberOfSelectedRecords > 1 ? 'Records' : 'Record'
+                  }`}
+                />
+              ),
+            } satisfies ContextMenuEntry)
+          : undefined,
+      ].filter(isDefined),
+    [
+      download,
+      progress,
+      canDelete,
+      handleDeleteClick,
+      isDeleteRecordsModalOpen,
+      numberOfSelectedRecords,
+    ],
   );
 
   const hasOnlyOneRecordSelected = selectedRecordIds.length === 1;
@@ -134,8 +156,8 @@ export const useRecordActionBar = ({
   return {
     setContextMenuEntries: useCallback(() => {
       setContextMenuEntries([
-        ...baseActions,
-        ...(isFavorite && hasOnlyOneRecordSelected
+        ...menuActions,
+        ...(!isRemoteObject && isFavorite && hasOnlyOneRecordSelected
           ? [
               {
                 label: 'Remove from favorites',
@@ -144,7 +166,7 @@ export const useRecordActionBar = ({
               },
             ]
           : []),
-        ...(!isFavorite && hasOnlyOneRecordSelected
+        ...(!isRemoteObject && !isFavorite && hasOnlyOneRecordSelected
           ? [
               {
                 label: 'Add to favorites',
@@ -155,21 +177,23 @@ export const useRecordActionBar = ({
           : []),
       ]);
     }, [
-      baseActions,
+      menuActions,
       handleFavoriteButtonClick,
       hasOnlyOneRecordSelected,
       isFavorite,
+      isRemoteObject,
       setContextMenuEntries,
     ]),
 
     setActionBarEntries: useCallback(() => {
       setActionBarEntriesState([
-        ...(dataExecuteQuickActionOnmentEnabled
-          ? [
+        /*
               {
                 label: 'Actions',
                 Icon: IconClick,
-                subActions: [
+                subActions: 
+                
+                /* [
                   {
                     label: 'Enrich',
                     Icon: IconPuzzle,
@@ -180,16 +204,9 @@ export const useRecordActionBar = ({
                     Icon: IconMail,
                   },
                 ],
-              },
-            ]
-          : []),
-        ...baseActions,
+          */
+        ...menuActions,
       ]);
-    }, [
-      baseActions,
-      dataExecuteQuickActionOnmentEnabled,
-      handleExecuteQuickActionOnClick,
-      setActionBarEntriesState,
-    ]),
+    }, [menuActions, setActionBarEntriesState]),
   };
 };

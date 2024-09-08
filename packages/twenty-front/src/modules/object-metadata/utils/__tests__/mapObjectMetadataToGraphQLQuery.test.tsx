@@ -1,10 +1,8 @@
 import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
+import { normalizeGQLQuery } from '~/utils/normalizeGQLQuery';
 
 const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
-const formatGQLString = (inputString: string) =>
-  inputString.replace(/^\s*[\r\n]/gm, '');
 
 const personObjectMetadataItem = mockObjectMetadataItems.find(
   (item) => item.nameSingular === 'person',
@@ -15,265 +13,126 @@ if (!personObjectMetadataItem) {
 }
 
 describe('mapObjectMetadataToGraphQLQuery', () => {
-  it('should return typename if depth < 0', async () => {
+  it('should query only specified recordGqlFields', async () => {
     const res = mapObjectMetadataToGraphQLQuery({
       objectMetadataItems: mockObjectMetadataItems,
       objectMetadataItem: personObjectMetadataItem,
-      depth: -1,
+      recordGqlFields: {
+        company: true,
+        xLink: true,
+        id: true,
+        createdAt: true,
+        city: true,
+        email: true,
+        jobTitle: true,
+        name: true,
+        phone: true,
+        linkedinLink: true,
+        updatedAt: true,
+        avatarUrl: true,
+        companyId: true,
+      },
     });
-    expect(formatGQLString(res)).toEqual(`{
-__typename
-}`);
+    expect(normalizeGQLQuery(res)).toEqual(
+      normalizeGQLQuery(`{
+    __typename
+    name
+    {
+      firstName
+      lastName
+    }
+    email
+    phone
+    createdAt
+    avatarUrl
+    jobTitle
+    city
+    id
+    xLink
+    {
+      primaryLinkUrl
+      primaryLinkLabel
+      secondaryLinks
+    }
+    company
+    {
+    __typename
+    idealCustomerProfile
+    id
+    xLink
+    {
+      primaryLinkUrl
+      primaryLinkLabel
+      secondaryLinks
+    }
+    annualRecurringRevenue
+    {
+      amountMicros
+      currencyCode
+    }
+    address
+    {
+      addressStreet1
+      addressStreet2
+      addressCity
+      addressState
+      addressCountry
+      addressPostcode
+      addressLat
+      addressLng
+    }
+    employees
+    position
+    name
+    linkedinLink
+    {
+      primaryLinkUrl
+      primaryLinkLabel
+      secondaryLinks
+    }
+    createdAt
+    accountOwnerId
+    domainName
+    {
+      primaryLinkUrl
+      primaryLinkLabel
+      secondaryLinks
+    }
+    updatedAt
+    }
+    updatedAt
+    companyId
+    linkedinLink
+    {
+      primaryLinkUrl
+      primaryLinkLabel
+      secondaryLinks
+    }
+    }`),
+    );
   });
 
-  it('should return depth 0 if depth = 0', async () => {
+  it('should load only specified operation fields nested', async () => {
     const res = mapObjectMetadataToGraphQLQuery({
       objectMetadataItems: mockObjectMetadataItems,
       objectMetadataItem: personObjectMetadataItem,
-      depth: 0,
+      recordGqlFields: { company: { id: true }, id: true, name: true },
     });
-    expect(formatGQLString(res)).toEqual(`{
+    expect(normalizeGQLQuery(res)).toEqual(
+      normalizeGQLQuery(`{
 __typename
-xLink
-{
-  label
-  url
-}
 id
-createdAt
-city
-email
-jobTitle
-name
-{
-  firstName
-  lastName
-}
-phone
-linkedinLink
-{
-  label
-  url
-}
-updatedAt
-avatarUrl
-companyId
-}`);
-  });
-
-  it('should return depth 1 if depth = 1', async () => {
-    const res = mapObjectMetadataToGraphQLQuery({
-      objectMetadataItems: mockObjectMetadataItems,
-      objectMetadataItem: personObjectMetadataItem,
-      depth: 1,
-    });
-    expect(formatGQLString(res)).toEqual(`{
-__typename
-opportunities
-{
-  edges {
-    node {
-__typename
-personId
-pointOfContactId
-updatedAt
-companyId
-probability
-closeDate
-amount
-{
-  amountMicros
-  currencyCode
-}
-id
-createdAt
-}
-  }
-}
-xLink
-{
-  label
-  url
-}
-id
-pointOfContactForOpportunities
-{
-  edges {
-    node {
-__typename
-personId
-pointOfContactId
-updatedAt
-companyId
-probability
-closeDate
-amount
-{
-  amountMicros
-  currencyCode
-}
-id
-createdAt
-}
-  }
-}
-createdAt
 company
 {
 __typename
-xLink
-{
-  label
-  url
-}
-linkedinLink
-{
-  label
-  url
-}
-domainName
-annualRecurringRevenue
-{
-  amountMicros
-  currencyCode
-}
-createdAt
-address
-updatedAt
-name
-accountOwnerId
-employees
 id
-idealCustomerProfile
-}
-city
-email
-activityTargets
-{
-  edges {
-    node {
-__typename
-updatedAt
-createdAt
-personId
-activityId
-companyId
-id
-}
-  }
-}
-jobTitle
-favorites
-{
-  edges {
-    node {
-__typename
-id
-companyId
-createdAt
-personId
-position
-workspaceMemberId
-updatedAt
-}
-  }
-}
-attachments
-{
-  edges {
-    node {
-__typename
-updatedAt
-createdAt
-name
-personId
-activityId
-companyId
-id
-authorId
-type
-fullPath
-}
-  }
 }
 name
 {
   firstName
   lastName
 }
-phone
-linkedinLink
-{
-  label
-  url
-}
-updatedAt
-avatarUrl
-companyId
-}`);
-  });
-
-  it('should eager load only specified relations', async () => {
-    const res = mapObjectMetadataToGraphQLQuery({
-      objectMetadataItems: mockObjectMetadataItems,
-      objectMetadataItem: personObjectMetadataItem,
-      eagerLoadedRelations: { company: true },
-      depth: 1,
-    });
-    expect(formatGQLString(res)).toEqual(`{
-__typename
-xLink
-{
-  label
-  url
-}
-id
-createdAt
-company
-{
-__typename
-xLink
-{
-  label
-  url
-}
-linkedinLink
-{
-  label
-  url
-}
-domainName
-annualRecurringRevenue
-{
-  amountMicros
-  currencyCode
-}
-createdAt
-address
-updatedAt
-name
-accountOwnerId
-employees
-id
-idealCustomerProfile
-}
-city
-email
-jobTitle
-name
-{
-  firstName
-  lastName
-}
-phone
-linkedinLink
-{
-  label
-  url
-}
-updatedAt
-avatarUrl
-companyId
-}`);
+}`),
+    );
   });
 });

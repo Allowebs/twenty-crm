@@ -1,12 +1,15 @@
-import { PassportStrategy } from '@nestjs/passport';
 import { Injectable } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
 
-import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { Request } from 'express';
+import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 
 import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 
-export type GoogleRequest = Request & {
+export type GoogleRequest = Omit<
+  Request,
+  'user' | 'workspace' | 'workspaceMetadataVersion'
+> & {
   user: {
     firstName?: string | null;
     lastName?: string | null;

@@ -4,54 +4,95 @@ import { v4 } from 'uuid';
 import { triggerCreateRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerCreateRecordsOptimisticEffect';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
-import { ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
-import { useGenerateObjectRecordOptimisticResponse } from '@/object-record/cache/hooks/useGenerateObjectRecordOptimisticResponse';
-import { getCreateManyRecordsMutationResponseField } from '@/object-record/hooks/useGenerateCreateManyRecordMutation';
+import { useCreateOneRecordInCache } from '@/object-record/cache/hooks/useCreateOneRecordInCache';
+import { getObjectTypename } from '@/object-record/cache/utils/getObjectTypename';
+import { RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
+import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
+import { useCreateManyRecordsMutation } from '@/object-record/hooks/useCreateManyRecordsMutation';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { getCreateManyRecordsMutationResponseField } from '@/object-record/utils/getCreateManyRecordsMutationResponseField';
 import { sanitizeRecordInput } from '@/object-record/utils/sanitizeRecordInput';
+import { isDefined } from '~/utils/isDefined';
 
-type CreateManyRecordsOptions = {
-  skipOptimisticEffect?: boolean;
+type useCreateManyRecordsProps = {
+  objectNameSingular: string;
+  recordGqlFields?: RecordGqlOperationGqlRecordFields;
+  skipPostOptmisticEffect?: boolean;
+  shouldMatchRootQueryFilter?: boolean;
 };
 
 export const useCreateManyRecords = <
   CreatedObjectRecord extends ObjectRecord = ObjectRecord,
 >({
   objectNameSingular,
-}: ObjectMetadataItemIdentifier) => {
+  recordGqlFields,
+  skipPostOptmisticEffect = false,
+  shouldMatchRootQueryFilter,
+}: useCreateManyRecordsProps) => {
   const apolloClient = useApolloClient();
 
-  const { objectMetadataItem, createManyRecordsMutation } =
-    useObjectMetadataItem({
-      objectNameSingular,
-    });
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular,
+  });
 
-  const { generateObjectRecordOptimisticResponse } =
-    useGenerateObjectRecordOptimisticResponse({
-      objectMetadataItem,
-    });
+  const computedRecordGqlFields =
+    recordGqlFields ?? generateDepthOneRecordGqlFields({ objectMetadataItem });
+
+  const { createManyRecordsMutation } = useCreateManyRecordsMutation({
+    objectNameSingular,
+    recordGqlFields: computedRecordGqlFields,
+  });
+
+  const createOneRecordInCache = useCreateOneRecordInCache<ObjectRecord>({
+    objectMetadataItem,
+  });
 
   const { objectMetadataItems } = useObjectMetadataItems();
 
   const createManyRecords = async (
-    data: Partial<CreatedObjectRecord>[],
-    options?: CreateManyRecordsOptions,
+    recordsToCreate: Partial<CreatedObjectRecord>[],
+    upsert?: boolean,
   ) => {
-    const sanitizedCreateManyRecordsInput = data.map((input) => {
-      const idForCreation = input.id ?? v4();
+    const sanitizedCreateManyRecordsInput = recordsToCreate.map(
+      (recordToCreate) => {
+        const idForCreation = recordToCreate?.id ?? (upsert ? undefined : v4());
 
-      const sanitizedRecordInput = sanitizeRecordInput({
-        objectMetadataItem,
-        recordInput: { ...input, id: idForCreation },
+        return {
+          ...sanitizeRecordInput({
+            objectMetadataItem,
+            recordInput: recordToCreate,
+          }),
+          id: idForCreation,
+        };
+      },
+    );
+
+    const recordsCreatedInCache = [];
+
+    for (const recordToCreate of sanitizedCreateManyRecordsInput) {
+      if (recordToCreate.id === null) {
+        continue;
+      }
+
+      const recordCreatedInCache = createOneRecordInCache({
+        ...(recordToCreate as { id: string }),
+        __typename: getObjectTypename(objectMetadataItem.nameSingular),
       });
 
-      return sanitizedRecordInput;
-    });
+      if (isDefined(recordCreatedInCache)) {
+        recordsCreatedInCache.push(recordCreatedInCache);
+      }
+    }
 
-    const optimisticallyCreatedRecords = sanitizedCreateManyRecordsInput.map(
-      (record) =>
-        generateObjectRecordOptimisticResponse<CreatedObjectRecord>(record),
-    );
+    if (recordsCreatedInCache.length > 0) {
+      triggerCreateRecordsOptimisticEffect({
+        cache: apolloClient.cache,
+        objectMetadataItem,
+        recordsToCreate: recordsCreatedInCache,
+        objectMetadataItems,
+        shouldMatchRootQueryFilter,
+      });
+    }
 
     const mutationResponseField = getCreateManyRecordsMutationResponseField(
       objectMetadataItem.namePlural,
@@ -61,26 +102,21 @@ export const useCreateManyRecords = <
       mutation: createManyRecordsMutation,
       variables: {
         data: sanitizedCreateManyRecordsInput,
+        upsert: upsert,
       },
-      optimisticResponse: options?.skipOptimisticEffect
-        ? undefined
-        : {
-            [mutationResponseField]: optimisticallyCreatedRecords,
-          },
-      update: options?.skipOptimisticEffect
-        ? undefined
-        : (cache, { data }) => {
-            const records = data?.[mutationResponseField];
+      update: (cache, { data }) => {
+        const records = data?.[mutationResponseField];
 
-            if (!records?.length) return;
+        if (!records?.length || skipPostOptmisticEffect) return;
 
-            triggerCreateRecordsOptimisticEffect({
-              cache,
-              objectMetadataItem,
-              recordsToCreate: records,
-              objectMetadataItems,
-            });
-          },
+        triggerCreateRecordsOptimisticEffect({
+          cache,
+          objectMetadataItem,
+          recordsToCreate: records,
+          objectMetadataItems,
+          shouldMatchRootQueryFilter,
+        });
+      },
     });
 
     return createdObjects.data?.[mutationResponseField] ?? [];

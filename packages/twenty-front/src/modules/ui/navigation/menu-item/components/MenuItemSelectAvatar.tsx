@@ -1,8 +1,6 @@
 import { ReactNode } from 'react';
 import { useTheme } from '@emotion/react';
-
-import { IconCheck } from '@/ui/display/icon';
-import { OverflowingTextWithTooltip } from '@/ui/display/tooltip/OverflowingTextWithTooltip';
+import { IconCheck, OverflowingTextWithTooltip } from 'twenty-ui';
 
 import {
   StyledMenuItemLabel,
@@ -49,7 +47,7 @@ export const MenuItemSelectAvatar = ({
           <OverflowingTextWithTooltip text={text} />
         </StyledMenuItemLabel>
       </StyledMenuItemLeftContent>
-      {selected && <IconCheck size={theme.icon.size.sm} />}
+      {selected && <IconCheck size={theme.icon.size.md} />}
     </StyledMenuItemSelect>
   );
 };

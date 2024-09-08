@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { IconGoogle } from 'twenty-ui';
 
 import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { SettingsAccountsListEmptyStateCard } from '@/settings/accounts/components/SettingsAccountsListEmptyStateCard';
-import { SettingsAccountsRowDropdownMenu } from '@/settings/accounts/components/SettingsAccountsRowDropdownMenu';
 import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
 import { SettingsPath } from '@/types/SettingsPath';
-import { IconGoogle } from '@/ui/display/icon/components/IconGoogle';
 
+import { SettingsAccountsConnectedAccountsRowRightContainer } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsRowRightContainer';
 import { SettingsListCard } from '../../components/SettingsListCard';
 
 export const SettingsAccountsConnectedAccountsListCard = ({
@@ -29,7 +29,7 @@ export const SettingsAccountsConnectedAccountsListCard = ({
       isLoading={loading}
       RowIcon={IconGoogle}
       RowRightComponent={({ item: account }) => (
-        <SettingsAccountsRowDropdownMenu item={account} />
+        <SettingsAccountsConnectedAccountsRowRightContainer account={account} />
       )}
       hasFooter
       footerButtonLabel="Add account"

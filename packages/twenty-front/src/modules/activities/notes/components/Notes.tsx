@@ -1,10 +1,12 @@
 import styled from '@emotion/styled';
+import { IconPlus } from 'twenty-ui';
 
+import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
 import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
 import { NoteList } from '@/activities/notes/components/NoteList';
 import { useNotes } from '@/activities/notes/hooks/useNotes';
 import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { IconPlus } from '@/ui/display/icon';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { Button } from '@/ui/input/button/components/Button';
 import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
 import {
@@ -12,6 +14,7 @@ import {
   AnimatedPlaceholderEmptySubTitle,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderEmptyTitle,
+  EMPTY_PLACEHOLDER_TRANSITION_PROPS,
 } from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
 
 const StyledNotesContainer = styled.div`
@@ -27,17 +30,24 @@ export const Notes = ({
 }: {
   targetableObject: ActivityTargetableObject;
 }) => {
-  const { notes, initialized } = useNotes(targetableObject);
+  const { notes, loading } = useNotes(targetableObject);
 
-  const openCreateActivity = useOpenCreateActivityDrawer();
+  const openCreateActivity = useOpenCreateActivityDrawer({
+    activityObjectNameSingular: CoreObjectNameSingular.Note,
+  });
 
-  if (!initialized) {
-    return <></>;
+  const isNotesEmpty = !notes || notes.length === 0;
+
+  if (loading && isNotesEmpty) {
+    return <SkeletonLoader />;
   }
 
-  if (notes?.length === 0) {
+  if (isNotesEmpty) {
     return (
-      <AnimatedPlaceholderEmptyContainer>
+      <AnimatedPlaceholderEmptyContainer
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...EMPTY_PLACEHOLDER_TRANSITION_PROPS}
+      >
         <AnimatedPlaceholder type="noNote" />
         <AnimatedPlaceholderEmptyTextContainer>
           <AnimatedPlaceholderEmptyTitle>
@@ -53,7 +63,6 @@ export const Notes = ({
           variant="secondary"
           onClick={() =>
             openCreateActivity({
-              type: 'Note',
               targetableObjects: [targetableObject],
             })
           }
@@ -66,7 +75,7 @@ export const Notes = ({
     <StyledNotesContainer>
       <NoteList
         title="All"
-        notes={notes ?? []}
+        notes={notes}
         button={
           <Button
             Icon={IconPlus}
@@ -75,7 +84,6 @@ export const Notes = ({
             title="Add note"
             onClick={() =>
               openCreateActivity({
-                type: 'Note',
                 targetableObjects: [targetableObject],
               })
             }

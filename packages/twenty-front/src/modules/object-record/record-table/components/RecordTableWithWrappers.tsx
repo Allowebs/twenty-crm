@@ -1,23 +1,12 @@
-import { useRef } from 'react';
 import styled from '@emotion/styled';
-import { useRecoilCallback, useRecoilValue } from 'recoil';
+import { useRef } from 'react';
+import { useRecoilCallback } from 'recoil';
 
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
 import { RecordTable } from '@/object-record/record-table/components/RecordTable';
 import { EntityDeleteContext } from '@/object-record/record-table/contexts/EntityDeleteHookContext';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
 import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
-import { IconPlus } from '@/ui/display/icon';
-import { Button } from '@/ui/input/button/components/Button';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
-import {
-  AnimatedPlaceholderEmptyContainer,
-  AnimatedPlaceholderEmptySubTitle,
-  AnimatedPlaceholderEmptyTextContainer,
-  AnimatedPlaceholderEmptyTitle,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
 import { DragSelect } from '@/ui/utilities/drag-select/components/DragSelect';
 import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
 import { useSaveCurrentViewFields } from '@/views/hooks/useSaveCurrentViewFields';
@@ -29,10 +18,7 @@ import { useRecordTable } from '../hooks/useRecordTable';
 import { RecordTableInternalEffect } from './RecordTableInternalEffect';
 
 const StyledTableWithHeader = styled.div`
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  width: 100%;
+  height: 100%;
 `;
 
 const StyledTableContainer = styled.div`
@@ -40,6 +26,10 @@ const StyledTableContainer = styled.div`
   flex-direction: column;
   height: 100%;
   position: relative;
+`;
+
+const StyledTableInternalContainer = styled.div`
+  height: 100%;
 `;
 
 type RecordTableWithWrappersProps = {
@@ -59,82 +49,49 @@ export const RecordTableWithWrappers = ({
 }: RecordTableWithWrappersProps) => {
   const tableBodyRef = useRef<HTMLDivElement>(null);
 
-  const { numberOfTableRowsState, isRecordTableInitialLoadingState } =
-    useRecordTableStates(recordTableId);
-
-  const numberOfTableRows = useRecoilValue(numberOfTableRowsState);
-
-  const isRecordTableInitialLoading = useRecoilValue(
-    isRecordTableInitialLoadingState,
-  );
-
-  const { resetTableRowSelection, setRowSelectedState } = useRecordTable({
+  const { resetTableRowSelection, setRowSelected } = useRecordTable({
     recordTableId,
   });
-
-  const { objectMetadataItem: foundObjectMetadataItem } = useObjectMetadataItem(
-    {
-      objectNameSingular,
-    },
-  );
 
   const { saveViewFields } = useSaveCurrentViewFields(viewBarId);
 
   const { deleteOneRecord } = useDeleteOneRecord({ objectNameSingular });
 
-  const objectLabel = foundObjectMetadataItem?.labelSingular;
+  const handleColumnsChange = useRecoilCallback(
+    () => (columns) => {
+      saveViewFields(
+        mapColumnDefinitionsToViewFields(
+          columns as ColumnDefinition<FieldMetadata>[],
+        ),
+      );
+    },
+    [saveViewFields],
+  );
 
   return (
     <EntityDeleteContext.Provider value={deleteOneRecord}>
-      <ScrollWrapper>
+      <ScrollWrapper contextProviderName="recordTableWithWrappers">
         <RecordUpdateContext.Provider value={updateRecordMutation}>
           <StyledTableWithHeader>
             <StyledTableContainer>
-              <div ref={tableBodyRef}>
+              <StyledTableInternalContainer ref={tableBodyRef}>
                 <RecordTable
+                  viewBarId={viewBarId}
                   recordTableId={recordTableId}
                   objectNameSingular={objectNameSingular}
-                  onColumnsChange={useRecoilCallback(
-                    () => (columns) => {
-                      saveViewFields(
-                        mapColumnDefinitionsToViewFields(
-                          columns as ColumnDefinition<FieldMetadata>[],
-                        ),
-                      );
-                    },
-                    [saveViewFields],
-                  )}
+                  onColumnsChange={handleColumnsChange}
                   createRecord={createRecord}
                 />
                 <DragSelect
                   dragSelectable={tableBodyRef}
                   onDragSelectionStart={resetTableRowSelection}
-                  onDragSelectionChange={setRowSelectedState}
+                  onDragSelectionChange={setRowSelected}
                 />
-              </div>
+              </StyledTableInternalContainer>
               <RecordTableInternalEffect
                 recordTableId={recordTableId}
                 tableBodyRef={tableBodyRef}
               />
-              {!isRecordTableInitialLoading && numberOfTableRows === 0 && (
-                <AnimatedPlaceholderEmptyContainer>
-                  <AnimatedPlaceholder type="noRecord" />
-                  <AnimatedPlaceholderEmptyTextContainer>
-                    <AnimatedPlaceholderEmptyTitle>
-                      Add your first {objectLabel}
-                    </AnimatedPlaceholderEmptyTitle>
-                    <AnimatedPlaceholderEmptySubTitle>
-                      Use our API or add your first {objectLabel} manually
-                    </AnimatedPlaceholderEmptySubTitle>
-                  </AnimatedPlaceholderEmptyTextContainer>
-                  <Button
-                    Icon={IconPlus}
-                    title={`Add a ${objectLabel}`}
-                    variant={'secondary'}
-                    onClick={createRecord}
-                  />
-                </AnimatedPlaceholderEmptyContainer>
-              )}
             </StyledTableContainer>
           </StyledTableWithHeader>
         </RecordUpdateContext.Provider>

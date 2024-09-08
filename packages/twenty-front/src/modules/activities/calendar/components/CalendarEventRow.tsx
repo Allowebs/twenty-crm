@@ -1,8 +1,15 @@
-import { useContext } from 'react';
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { format } from 'date-fns';
+import { useContext } from 'react';
 import { useRecoilValue } from 'recoil';
+import {
+  Avatar,
+  AvatarGroup,
+  IconArrowRight,
+  IconLock,
+  isDefined,
+} from 'twenty-ui';
 
 import { CalendarCurrentEventCursor } from '@/activities/calendar/components/CalendarCurrentEventCursor';
 import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
@@ -11,13 +18,12 @@ import { getCalendarEventEndDate } from '@/activities/calendar/utils/getCalendar
 import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
 import { hasCalendarEventEnded } from '@/activities/calendar/utils/hasCalendarEventEnded';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { IconArrowRight, IconLock } from '@/ui/display/icon';
 import { Card } from '@/ui/layout/card/components/Card';
 import { CardContent } from '@/ui/layout/card/components/CardContent';
-import { Avatar } from '@/users/components/Avatar';
-import { AvatarGroup } from '@/users/components/AvatarGroup';
-import { TimelineCalendarEvent } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
+import {
+  CalendarChannelVisibility,
+  TimelineCalendarEvent,
+} from '~/generated-metadata/graphql';
 
 type CalendarEventRowProps = {
   calendarEvent: TimelineCalendarEvent;
@@ -49,7 +55,7 @@ const StyledAttendanceIndicator = styled.div<{ active?: boolean }>`
 const StyledLabels = styled.div`
   align-items: center;
   display: flex;
-  color: ${({ theme }) => theme.font.color.tertiary};
+  color: ${({ theme }) => theme.font.color.primary};
   gap: ${({ theme }) => theme.spacing(2)};
   flex: 1 0 auto;
 `;
@@ -57,6 +63,7 @@ const StyledLabels = styled.div`
 const StyledTime = styled.div`
   align-items: center;
   display: flex;
+  color: ${({ theme }) => theme.font.color.tertiary};
   gap: ${({ theme }) => theme.spacing(1)};
   width: ${({ theme }) => theme.spacing(26)};
 `;
@@ -115,10 +122,11 @@ export const CalendarEventRow = ({
     : format(startsAt, 'HH:mm');
   const endTimeLabel = calendarEvent.isFullDay ? '' : format(endsAt, 'HH:mm');
 
-  const isCurrentWorkspaceMemberAttending = calendarEvent.attendees?.some(
+  const isCurrentWorkspaceMemberAttending = calendarEvent.participants?.some(
     ({ workspaceMemberId }) => workspaceMemberId === currentWorkspaceMember?.id,
   );
-  const showTitle = calendarEvent.visibility === 'SHARE_EVERYTHING';
+  const showTitle =
+    calendarEvent.visibility === CalendarChannelVisibility.ShareEverything;
 
   return (
     <StyledContainer
@@ -154,19 +162,22 @@ export const CalendarEventRow = ({
           </StyledVisibilityCard>
         )}
       </StyledLabels>
-      {!!calendarEvent.attendees?.length && (
+      {!!calendarEvent.participants?.length && (
         <AvatarGroup
-          avatars={calendarEvent.attendees.map((attendee) => (
+          avatars={calendarEvent.participants.map((participant) => (
             <Avatar
-              key={[attendee.workspaceMemberId, attendee.displayName]
+              key={[participant.workspaceMemberId, participant.displayName]
                 .filter(isDefined)
                 .join('-')}
-              avatarUrl={
-                attendee.workspaceMemberId === currentWorkspaceMember?.id
-                  ? currentWorkspaceMember?.avatarUrl
-                  : undefined
+              avatarUrl={participant.avatarUrl}
+              placeholder={
+                participant.firstName && participant.lastName
+                  ? `${participant.firstName} ${participant.lastName}`
+                  : participant.displayName
               }
-              placeholder={attendee.displayName}
+              placeholderColorSeed={
+                participant.workspaceMemberId ?? participant.personId
+              }
               type="rounded"
             />
           ))}

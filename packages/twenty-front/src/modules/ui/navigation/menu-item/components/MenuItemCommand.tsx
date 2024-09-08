@@ -1,7 +1,8 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconComponent } from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
 import {
   StyledMenuItemLabel,
@@ -84,6 +85,7 @@ export const MenuItemCommand = ({
   onClick,
 }: MenuItemCommandProps) => {
   const theme = useTheme();
+  const isMobile = useIsMobile();
 
   return (
     <StyledMenuItemCommandContainer
@@ -101,10 +103,12 @@ export const MenuItemCommand = ({
           {text}
         </StyledMenuItemLabelText>
       </StyledMenuItemLeftContent>
-      <MenuItemCommandHotKeys
-        firstHotKey={firstHotKey}
-        secondHotKey={secondHotKey}
-      />
+      {!isMobile && (
+        <MenuItemCommandHotKeys
+          firstHotKey={firstHotKey}
+          secondHotKey={secondHotKey}
+        />
+      )}
     </StyledMenuItemCommandContainer>
   );
 };

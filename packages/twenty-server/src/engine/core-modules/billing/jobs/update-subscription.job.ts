@@ -1,33 +1,41 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger, Scope } from '@nestjs/common';
 
-import { MessageQueueJob } from 'src/engine/integrations/message-queue/interfaces/message-queue-job.interface';
-
-import { BillingService } from 'src/engine/core-modules/billing/billing.service';
-import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
+import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
 import { StripeService } from 'src/engine/core-modules/billing/stripe/stripe.service';
+import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
+import { Process } from 'src/engine/integrations/message-queue/decorators/process.decorator';
+import { Processor } from 'src/engine/integrations/message-queue/decorators/processor.decorator';
+import { MessageQueue } from 'src/engine/integrations/message-queue/message-queue.constants';
 export type UpdateSubscriptionJobData = { workspaceId: string };
-@Injectable()
-export class UpdateSubscriptionJob
-  implements MessageQueueJob<UpdateSubscriptionJobData>
-{
+
+@Processor({
+  queueName: MessageQueue.billingQueue,
+  scope: Scope.REQUEST,
+})
+export class UpdateSubscriptionJob {
   protected readonly logger = new Logger(UpdateSubscriptionJob.name);
+
   constructor(
-    private readonly billingService: BillingService,
+    private readonly billingSubscriptionService: BillingSubscriptionService,
     private readonly userWorkspaceService: UserWorkspaceService,
     private readonly stripeService: StripeService,
   ) {}
 
+  @Process(UpdateSubscriptionJob.name)
   async handle(data: UpdateSubscriptionJobData): Promise<void> {
-    const workspaceMembersCount =
-      await this.userWorkspaceService.getWorkspaceMemberCount(data.workspaceId);
+    const workspaceMembersCount = await this.userWorkspaceService.getUserCount(
+      data.workspaceId,
+    );
 
-    if (workspaceMembersCount <= 0) {
+    if (!workspaceMembersCount || workspaceMembersCount <= 0) {
       return;
     }
 
     try {
       const billingSubscriptionItem =
-        await this.billingService.getBillingSubscriptionItem(data.workspaceId);
+        await this.billingSubscriptionService.getCurrentBillingSubscriptionItemOrThrow(
+          data.workspaceId,
+        );
 
       await this.stripeService.updateSubscriptionItem(
         billingSubscriptionItem.stripeSubscriptionItemId,

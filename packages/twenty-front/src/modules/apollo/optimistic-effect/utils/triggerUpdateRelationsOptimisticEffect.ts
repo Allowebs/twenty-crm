@@ -1,15 +1,16 @@
 import { ApolloCache } from '@apollo/client';
 
 import { getRelationDefinition } from '@/apollo/optimistic-effect/utils/getRelationDefinition';
-import { isObjectRecordConnection } from '@/apollo/optimistic-effect/utils/isObjectRecordConnection';
 import { triggerAttachRelationOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerAttachRelationOptimisticEffect';
 import { triggerDeleteRecordsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerDeleteRecordsOptimisticEffect';
 import { triggerDetachRelationOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerDetachRelationOptimisticEffect';
-import { CachedObjectRecord } from '@/apollo/types/CachedObjectRecord';
 import { CORE_OBJECT_NAMES_TO_DELETE_ON_TRIGGER_RELATION_DETACH } from '@/apollo/types/coreObjectNamesToDeleteOnRelationDetach';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { ObjectRecordConnection } from '@/object-record/types/ObjectRecordConnection';
+import { isObjectRecordConnection } from '@/object-record/cache/utils/isObjectRecordConnection';
+import { RecordGqlConnection } from '@/object-record/graphql/types/RecordGqlConnection';
+import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
 import { isDefined } from '~/utils/isDefined';
@@ -23,8 +24,8 @@ export const triggerUpdateRelationsOptimisticEffect = ({
 }: {
   cache: ApolloCache<unknown>;
   sourceObjectMetadataItem: ObjectMetadataItem;
-  currentSourceRecord: CachedObjectRecord | null;
-  updatedSourceRecord: CachedObjectRecord | null;
+  currentSourceRecord: ObjectRecord | null;
+  updatedSourceRecord: ObjectRecord | null;
   objectMetadataItems: ObjectMetadataItem[];
 }) => {
   return sourceObjectMetadataItem.fields.forEach(
@@ -56,19 +57,20 @@ export const triggerUpdateRelationsOptimisticEffect = ({
         relationDefinition;
 
       const currentFieldValueOnSourceRecord:
-        | ObjectRecordConnection
-        | CachedObjectRecord
+        | RecordGqlConnection
+        | RecordGqlNode
         | null = currentSourceRecord?.[fieldMetadataItemOnSourceRecord.name];
 
       const updatedFieldValueOnSourceRecord:
-        | ObjectRecordConnection
-        | CachedObjectRecord
+        | RecordGqlConnection
+        | RecordGqlNode
         | null = updatedSourceRecord?.[fieldMetadataItemOnSourceRecord.name];
 
       if (
         isDeeplyEqual(
           currentFieldValueOnSourceRecord,
           updatedFieldValueOnSourceRecord,
+          { strict: true },
         )
       ) {
         return;
@@ -85,7 +87,7 @@ export const triggerUpdateRelationsOptimisticEffect = ({
       const targetRecordsToDetachFrom =
         currentFieldValueOnSourceRecordIsARecordConnection
           ? currentFieldValueOnSourceRecord.edges.map(
-              ({ node }) => node as CachedObjectRecord,
+              ({ node }) => node as RecordGqlNode,
             )
           : [currentFieldValueOnSourceRecord].filter(isDefined);
 
@@ -98,7 +100,7 @@ export const triggerUpdateRelationsOptimisticEffect = ({
       const targetRecordsToAttachTo =
         updatedFieldValueOnSourceRecordIsARecordConnection
           ? updatedFieldValueOnSourceRecord.edges.map(
-              ({ node }) => node as CachedObjectRecord,
+              ({ node }) => node as RecordGqlNode,
             )
           : [updatedFieldValueOnSourceRecord].filter(isDefined);
 

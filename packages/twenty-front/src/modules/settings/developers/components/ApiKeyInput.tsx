@@ -1,7 +1,8 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconCopy } from 'twenty-ui';
 
-import { IconCopy } from '@/ui/display/icon';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { Button } from '@/ui/input/button/components/Button';
 import { TextInput } from '@/ui/input/components/TextInput';
@@ -31,8 +32,8 @@ export const ApiKeyInput = ({ apiKey }: ApiKeyInputProps) => {
         Icon={IconCopy}
         title="Copy"
         onClick={() => {
-          enqueueSnackBar('Api Key copied to clipboard', {
-            variant: 'success',
+          enqueueSnackBar('API Key copied to clipboard', {
+            variant: SnackBarVariant.Success,
             icon: <IconCopy size={theme.icon.size.md} />,
             duration: 2000,
           });

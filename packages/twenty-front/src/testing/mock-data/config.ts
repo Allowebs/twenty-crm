@@ -1,18 +1,20 @@
-export const mockedClientConfig = {
+import { ClientConfig } from '~/generated-metadata/graphql';
+import { CaptchaDriverType } from '~/generated/graphql';
+
+export const mockedClientConfig: ClientConfig = {
   signInPrefilled: true,
   signUpDisabled: false,
-  dataModelSettingsEnabled: true,
-  developersSettingsEnabled: true,
+  chromeExtensionId: 'MOCKED_EXTENSION_ID',
   debugMode: false,
   authProviders: {
     google: true,
     password: true,
     magicLink: false,
+    microsoft: false,
     __typename: 'AuthProviders',
   },
   telemetry: {
     enabled: false,
-    anonymizationEnabled: true,
     __typename: 'Telemetry',
   },
   support: {
@@ -20,11 +22,22 @@ export const mockedClientConfig = {
     supportFrontChatId: null,
     __typename: 'Support',
   },
+  sentry: {
+    dsn: 'MOCKED_DSN',
+    release: 'MOCKED_RELEASE',
+    environment: 'MOCKED_ENVIRONMENT',
+    __typename: 'Sentry',
+  },
   billing: {
     isBillingEnabled: true,
     billingUrl: '',
     billingFreeTrialDurationInDays: 10,
     __typename: 'Billing',
   },
-  __typename: 'ClientConfig',
+  captcha: {
+    provider: CaptchaDriverType.GoogleRecaptcha,
+    siteKey: 'MOCKED_SITE_KEY',
+    __typename: 'Captcha',
+  },
+  api: { mutationMaximumAffectedRecords: 100 },
 };

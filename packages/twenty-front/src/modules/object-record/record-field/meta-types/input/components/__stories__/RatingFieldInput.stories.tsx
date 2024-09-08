@@ -27,11 +27,11 @@ const RatingFieldValueSetterEffect = ({
 
 type RatingFieldInputWithContextProps = RatingFieldInputProps & {
   value: FieldRatingValue;
-  entityId?: string;
+  recordId?: string;
 };
 
 const RatingFieldInputWithContext = ({
-  entityId,
+  recordId,
   value,
   onSubmit,
 }: RatingFieldInputWithContextProps) => {
@@ -50,9 +50,10 @@ const RatingFieldInputWithContext = ({
         iconName: 'Icon123',
         metadata: {
           fieldName: 'Rating',
+          objectMetadataNameSingular: 'person',
         },
       }}
-      entityId={entityId}
+      recordId={recordId}
     >
       <RatingFieldValueSetterEffect value={value} />
       <RatingFieldInput onSubmit={onSubmit} />

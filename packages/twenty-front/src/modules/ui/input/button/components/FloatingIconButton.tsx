@@ -1,8 +1,7 @@
-import React from 'react';
-import { useTheme } from '@emotion/react';
+import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import React from 'react';
+import { IconComponent } from 'twenty-ui';
 
 export type FloatingIconButtonSize = 'small' | 'medium';
 export type FloatingIconButtonPosition =
@@ -23,15 +22,25 @@ export type FloatingIconButtonProps = {
   onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   isActive?: boolean;
 };
+const shouldForwardProp = (prop: string) =>
+  ![
+    'applyBlur',
+    'applyShadow',
+    'isActive',
+    'focus',
+    'position',
+    'size',
+  ].includes(prop);
 
-const StyledButton = styled.button<
+const StyledButton = styled('button', { shouldForwardProp })<
   Pick<
     FloatingIconButtonProps,
     'size' | 'position' | 'applyShadow' | 'applyBlur' | 'focus' | 'isActive'
   >
 >`
   align-items: center;
-  backdrop-filter: ${({ applyBlur }) => (applyBlur ? 'blur(20px)' : 'none')};
+  backdrop-filter: ${({ theme, applyBlur }) =>
+    applyBlur ? theme.blur.medium : 'none'};
   background: ${({ theme, isActive }) =>
     isActive ? theme.background.transparent.medium : theme.background.primary};
   border: ${({ focus, theme }) =>
@@ -88,10 +97,13 @@ const StyledButton = styled.button<
     `;
   }}
 
-  &:hover {
-    background: ${({ theme, isActive }) =>
-      !!isActive ?? theme.background.transparent.lighter};
-  }
+  ${({ theme, isActive }) =>
+    isActive &&
+    css`
+      &:hover {
+        background: ${theme.background.transparent.lighter};
+      }
+    `}
 
   &:active {
     background: ${({ theme, disabled }) =>

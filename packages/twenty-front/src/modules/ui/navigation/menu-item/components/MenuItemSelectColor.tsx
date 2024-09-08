@@ -1,11 +1,10 @@
 import { useTheme } from '@emotion/react';
-
 import {
   ColorSample,
   ColorSampleVariant,
-} from '@/ui/display/color/components/ColorSample';
-import { IconCheck } from '@/ui/display/icon';
-import { ThemeColor } from '@/ui/theme/constants/MainColorNames';
+  IconCheck,
+  ThemeColor,
+} from 'twenty-ui';
 
 import {
   StyledMenuItemLabel,
@@ -62,7 +61,7 @@ export const MenuItemSelectColor = ({
           {colorLabels[color]}
         </StyledMenuItemLabel>
       </StyledMenuItemLeftContent>
-      {selected && <IconCheck size={theme.icon.size.sm} />}
+      {selected && <IconCheck size={theme.icon.size.md} />}
     </StyledMenuItemSelect>
   );
 };

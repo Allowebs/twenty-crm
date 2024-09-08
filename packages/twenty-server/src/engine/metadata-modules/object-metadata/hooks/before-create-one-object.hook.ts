@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import {
   BeforeCreateOneHook,
@@ -11,18 +7,9 @@ import {
 
 import { CreateObjectInput } from 'src/engine/metadata-modules/object-metadata/dtos/create-object.input';
 
-const coreObjectNames = [
-  'featureFlag',
-  'refreshToken',
-  'workspace',
-  'user',
-  'event',
-  'field',
-];
-
 @Injectable()
 export class BeforeCreateOneObject<T extends CreateObjectInput>
-  implements BeforeCreateOneHook<T, any>
+  implements BeforeCreateOneHook<T>
 {
   async run(
     instance: CreateOneInputType<T>,
@@ -34,14 +21,6 @@ export class BeforeCreateOneObject<T extends CreateObjectInput>
       throw new UnauthorizedException();
     }
 
-    if (
-      coreObjectNames.includes(instance.input.nameSingular) ||
-      coreObjectNames.includes(instance.input.namePlural)
-    ) {
-      throw new ForbiddenException(
-        'You cannot create an object with this name.',
-      );
-    }
     instance.input.workspaceId = workspaceId;
 
     return instance;

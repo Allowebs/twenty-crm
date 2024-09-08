@@ -1,5 +1,10 @@
-import { IconLayersLinked, IconRelationOneToOne } from '@/ui/display/icon';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import {
+  IconComponent,
+  IconRelationManyToOne,
+  IconRelationOneToMany,
+  IconRelationOneToOne,
+} from 'twenty-ui';
+
 import { RelationMetadataType } from '~/generated-metadata/graphql';
 
 import OneToManySvg from '../assets/OneToMany.svg';
@@ -17,7 +22,7 @@ export const RELATION_TYPES: Record<
 > = {
   [RelationMetadataType.OneToMany]: {
     label: 'Has many',
-    Icon: IconLayersLinked,
+    Icon: IconRelationOneToMany,
     imageSrc: OneToManySvg,
   },
   [RelationMetadataType.OneToOne]: {
@@ -27,7 +32,7 @@ export const RELATION_TYPES: Record<
   },
   MANY_TO_ONE: {
     label: 'Belongs to one',
-    Icon: IconLayersLinked,
+    Icon: IconRelationManyToOne,
     imageSrc: OneToManySvg,
     isImageFlipped: true,
   },

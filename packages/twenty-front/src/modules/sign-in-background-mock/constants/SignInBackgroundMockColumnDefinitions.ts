@@ -1,3 +1,4 @@
+import { COMPANY_LABEL_IDENTIFIER_FIELD_METADATA_ID } from '@/object-metadata/utils/getObjectMetadataItemsMock';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
 import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
 import { filterAvailableTableColumns } from '@/object-record/utils/filterAvailableTableColumns';
@@ -10,7 +11,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       fieldMetadataId: '20202020-5e4e-4007-a630-8a2617914889',
       label: 'Domain Name',
       size: 100,
-      type: FieldMetadataType.Text,
+      type: FieldMetadataType.Links,
       metadata: {
         fieldName: 'domainName',
         placeHolder: 'Domain Name',
@@ -20,6 +21,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconLink',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 1,
@@ -36,10 +38,11 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconUsers',
       isVisible: true,
+      defaultValue: 0,
     },
     {
       position: 2,
-      fieldMetadataId: '20202020-6d30-4111-9f40-b4301906fd3c',
+      fieldMetadataId: COMPANY_LABEL_IDENTIFIER_FIELD_METADATA_ID,
       label: 'Name',
       size: 100,
       type: FieldMetadataType.Text,
@@ -52,6 +55,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconBuildingSkyscraper',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 3,
@@ -61,7 +65,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'favorites',
-        placeHolder: 'Favorites',
         relationType: 'FROM_MANY_OBJECTS',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
@@ -69,13 +72,14 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconHeart',
       isVisible: true,
+      defaultValue: [],
     },
     {
       position: 4,
       fieldMetadataId: '20202020-ad10-4117-a039-3f04b7a5f939',
       label: 'Address',
       size: 100,
-      type: FieldMetadataType.Text,
+      type: FieldMetadataType.Address,
       metadata: {
         fieldName: 'address',
         placeHolder: 'Address',
@@ -85,6 +89,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconMap',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 5,
@@ -94,7 +99,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'accountOwner',
-        placeHolder: 'Account Owner',
         relationType: 'TO_ONE_OBJECT',
         relationObjectMetadataNameSingular: 'workspaceMember',
         relationObjectMetadataNamePlural: 'workspaceMembers',
@@ -102,6 +106,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconUserCircle',
       isVisible: true,
+      defaultValue: null,
     },
     {
       position: 6,
@@ -111,7 +116,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'people',
-        placeHolder: 'People',
         relationType: 'FROM_MANY_OBJECTS',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
@@ -119,6 +123,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconUsers',
       isVisible: true,
+      defaultValue: [],
     },
     {
       position: 7,
@@ -128,7 +133,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'attachments',
-        placeHolder: 'Attachments',
         relationType: 'FROM_MANY_OBJECTS',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
@@ -136,6 +140,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconFileImport',
       isVisible: true,
+      defaultValue: [],
     },
     {
       position: 8,
@@ -152,6 +157,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconCalendar',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 9,
@@ -168,13 +174,14 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconTarget',
       isVisible: true,
+      defaultValue: false,
     },
     {
       position: 10,
       fieldMetadataId: '20202020-a61d-4b78-b998-3fd88b4f73a1',
       label: 'Linkedin',
       size: 100,
-      type: FieldMetadataType.Link,
+      type: FieldMetadataType.Links,
       metadata: {
         fieldName: 'linkedinLink',
         placeHolder: 'Linkedin',
@@ -184,6 +191,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconBrandLinkedin',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 11,
@@ -193,7 +201,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'opportunities',
-        placeHolder: 'Opportunities',
         relationType: 'FROM_MANY_OBJECTS',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
@@ -201,13 +208,14 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconTargetArrow',
       isVisible: true,
+      defaultValue: [],
     },
     {
       position: 12,
       fieldMetadataId: '20202020-46e3-479a-b8f4-77137c74daa6',
       label: 'X',
       size: 100,
-      type: FieldMetadataType.Link,
+      type: FieldMetadataType.Links,
       metadata: {
         fieldName: 'xLink',
         placeHolder: 'X',
@@ -217,6 +225,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconBrandX',
       isVisible: true,
+      defaultValue: '',
     },
     {
       position: 13,
@@ -226,7 +235,6 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       type: FieldMetadataType.Relation,
       metadata: {
         fieldName: 'activityTargets',
-        placeHolder: 'Activities',
         relationType: 'FROM_MANY_OBJECTS',
         relationObjectMetadataNameSingular: '',
         relationObjectMetadataNamePlural: '',
@@ -234,6 +242,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconCheckbox',
       isVisible: true,
+      defaultValue: [],
     },
     {
       position: 14,
@@ -250,6 +259,7 @@ export const SIGN_IN_BACKGROUND_MOCK_COLUMN_DEFINITIONS = (
       },
       iconName: 'IconMoneybag',
       isVisible: true,
+      defaultValue: 0,
     },
   ] satisfies ColumnDefinition<FieldMetadata>[]
 ).filter(filterAvailableTableColumns);

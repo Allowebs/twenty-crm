@@ -1,13 +1,51 @@
-import React from 'react';
-import ReactDatePicker from 'react-datepicker';
 import styled from '@emotion/styled';
+import { DateTime } from 'luxon';
+import ReactDatePicker from 'react-datepicker';
+import { Key } from 'ts-key-enum';
+import {
+  IconCalendarX,
+  IconChevronLeft,
+  IconChevronRight,
+  OVERLAY_BACKGROUND,
+} from 'twenty-ui';
 
-import { IconCalendarX } from '@/ui/display/icon';
+import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
+import { DateTimeInput } from '@/ui/input/components/internal/date/components/DateTimeInput';
+import { Select } from '@/ui/input/components/Select';
+import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
 import { MenuItemLeftContent } from '@/ui/navigation/menu-item/internals/components/MenuItemLeftContent';
 import { StyledHoverableMenuItemBase } from '@/ui/navigation/menu-item/internals/components/StyledMenuItemBase';
-import { OVERLAY_BACKGROUND } from '@/ui/theme/constants/OverlayBackground';
+import { isDefined } from '~/utils/isDefined';
 
+import { UserContext } from '@/users/contexts/UserContext';
+import { useContext } from 'react';
 import 'react-datepicker/dist/react-datepicker.css';
+
+const months = [
+  { label: 'January', value: 0 },
+  { label: 'February', value: 1 },
+  { label: 'March', value: 2 },
+  { label: 'April', value: 3 },
+  { label: 'May', value: 4 },
+  { label: 'June', value: 5 },
+  { label: 'July', value: 6 },
+  { label: 'August', value: 7 },
+  { label: 'September', value: 8 },
+  { label: 'October', value: 9 },
+  { label: 'November', value: 10 },
+  { label: 'December', value: 11 },
+];
+
+const years = Array.from(
+  { length: 200 },
+  (_, i) => new Date().getFullYear() + 5 - i,
+).map((year) => ({ label: year.toString(), value: year }));
+
+export const MONTH_AND_YEAR_DROPDOWN_ID = 'date-picker-month-and-year-dropdown';
+export const MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID =
+  'date-picker-month-and-year-dropdown-month-select';
+export const MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID =
+  'date-picker-month-and-year-dropdown-year-select';
 
 const StyledContainer = styled.div`
   & .react-datepicker {
@@ -27,6 +65,10 @@ const StyledContainer = styled.div`
     padding: 0 !important;
   }
 
+  & .react-datepicker__triangle {
+    display: none;
+  }
+
   & .react-datepicker__triangle::after {
     display: none;
   }
@@ -44,13 +86,21 @@ const StyledContainer = styled.div`
   & .react-datepicker__header {
     background: transparent;
     border: none;
+    padding: 0;
+  }
+
+  &
+    .react-datepicker__input-time-container
+    .react-datepicker-time__input-container
+    .react-datepicker-time__input {
+    outline: none;
   }
 
   & .react-datepicker__header__dropdown {
     display: flex;
     color: ${({ theme }) => theme.font.color.primary};
     margin-left: ${({ theme }) => theme.spacing(1)};
-    margin-bottom: ${({ theme }) => theme.spacing(1)};
+    margin-bottom: ${({ theme }) => theme.spacing(10)};
   }
 
   & .react-datepicker__month-dropdown-container,
@@ -176,7 +226,7 @@ const StyledContainer = styled.div`
   }
   & .react-datepicker__navigation--previous {
     right: 38px;
-    top: 8px;
+    top: 6px;
     left: auto;
 
     & > span {
@@ -186,7 +236,7 @@ const StyledContainer = styled.div`
 
   & .react-datepicker__navigation--next {
     right: 6px;
-    top: 8px;
+    top: 6px;
 
     & > span {
       margin-left: 6px;
@@ -211,7 +261,7 @@ const StyledContainer = styled.div`
 
   & .react-datepicker__day--selected {
     background-color: ${({ theme }) => theme.color.blue};
-    color: ${({ theme }) => theme.font.color.inverted};
+    color: ${({ theme }) => theme.grayScale.gray0};
   }
 
   & .react-datepicker__day--outside-month {
@@ -228,56 +278,262 @@ const StyledContainer = styled.div`
 `;
 
 const StyledButtonContainer = styled(StyledHoverableMenuItemBase)`
-  width: auto;
-  height: ${({ theme }) => theme.spacing(8)};
-  padding: 0 ${({ theme }) => theme.spacing(2)};
+  height: ${({ theme }) => theme.spacing(4)};
   margin: ${({ theme }) => theme.spacing(2)};
+  padding: ${({ theme }) => theme.spacing(1)};
+  width: auto;
 `;
 
 const StyledButton = styled(MenuItemLeftContent)`
-  justify-content: center;
+  justify-content: start;
 `;
 
-export type InternalDatePickerProps = {
+const StyledCustomDatePickerHeader = styled.div`
+  align-items: center;
+  display: flex;
+  justify-content: flex-end;
+  padding-left: ${({ theme }) => theme.spacing(2)};
+  padding-right: ${({ theme }) => theme.spacing(2)};
+  padding-top: ${({ theme }) => theme.spacing(2)};
+
+  gap: ${({ theme }) => theme.spacing(1)};
+`;
+
+type InternalDatePickerProps = {
   date: Date | null;
   onMouseSelect?: (date: Date | null) => void;
-  onChange?: (date: Date) => void;
+  onChange?: (date: Date | null) => void;
   clearable?: boolean;
+  isDateTimeInput?: boolean;
+  onEnter?: (date: Date | null) => void;
+  onEscape?: (date: Date | null) => void;
+  keyboardEventsDisabled?: boolean;
+  onClear?: () => void;
 };
 
 export const InternalDatePicker = ({
   date,
   onChange,
   onMouseSelect,
+  onEnter,
+  onEscape,
   clearable = true,
+  isDateTimeInput,
+  keyboardEventsDisabled,
+  onClear,
 }: InternalDatePickerProps) => {
+  const internalDate = date ?? new Date();
+
+  const { timeZone } = useContext(UserContext);
+
+  const { closeDropdown } = useDropdown(MONTH_AND_YEAR_DROPDOWN_ID);
+  const { closeDropdown: closeDropdownMonthSelect } = useDropdown(
+    MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID,
+  );
+  const { closeDropdown: closeDropdownYearSelect } = useDropdown(
+    MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID,
+  );
+
   const handleClear = () => {
-    onMouseSelect?.(null);
+    closeDropdowns();
+    onClear?.();
   };
 
+  const closeDropdowns = () => {
+    closeDropdownYearSelect();
+    closeDropdownMonthSelect();
+    closeDropdown();
+  };
+
+  const handleMouseSelect = (newDate: Date) => {
+    closeDropdowns();
+    onMouseSelect?.(newDate);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isDefined(keyboardEventsDisabled) && keyboardEventsDisabled) {
+      return;
+    }
+
+    switch (event.key) {
+      case Key.Enter: {
+        event.stopPropagation();
+        event.preventDefault();
+
+        closeDropdowns();
+        onEnter?.(internalDate);
+        break;
+      }
+      case Key.Escape: {
+        event.stopPropagation();
+        event.preventDefault();
+
+        closeDropdowns();
+        onEscape?.(internalDate);
+        break;
+      }
+    }
+  };
+
+  const handleChangeMonth = (month: number) => {
+    const newDate = new Date(internalDate);
+    newDate.setMonth(month);
+    onChange?.(newDate);
+  };
+
+  const handleAddMonth = () => {
+    const dateParsed = DateTime.fromJSDate(internalDate, { zone: timeZone })
+      .plus({ months: 1 })
+      .toJSDate();
+
+    onChange?.(dateParsed);
+  };
+
+  const handleSubtractMonth = () => {
+    const dateParsed = DateTime.fromJSDate(internalDate, { zone: timeZone })
+      .minus({ months: 1 })
+      .toJSDate();
+
+    onChange?.(dateParsed);
+  };
+
+  const handleChangeYear = (year: number) => {
+    const dateParsed = DateTime.fromJSDate(internalDate, { zone: timeZone })
+      .set({ year: year })
+      .toJSDate();
+
+    onChange?.(dateParsed);
+  };
+
+  const handleDateChange = (date: Date) => {
+    const dateParsed = DateTime.fromJSDate(internalDate, {
+      zone: isDateTimeInput ? timeZone : 'local',
+    })
+      .set({
+        day: date.getDate(),
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+      })
+      .toJSDate();
+
+    onChange?.(dateParsed);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    const dateParsed = DateTime.fromJSDate(internalDate, {
+      zone: isDateTimeInput ? timeZone : 'local',
+    })
+      .set({
+        day: date.getDate(),
+        month: date.getMonth() + 1,
+        year: date.getFullYear(),
+      })
+      .toJSDate();
+
+    handleMouseSelect?.(dateParsed);
+  };
+
+  const dateWithoutTime = DateTime.fromJSDate(internalDate)
+    .toLocal()
+    .set({
+      day: internalDate.getUTCDate(),
+      month: internalDate.getUTCMonth() + 1,
+      year: internalDate.getUTCFullYear(),
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    })
+    .toJSDate();
+
+  const dateParsed = DateTime.fromJSDate(internalDate, {
+    zone: isDateTimeInput ? timeZone : 'local',
+  });
+
+  // We have to force a end of day on the computer local timezone with the given date
+  // Because JS Date API cannot hold a timezone other than the local one
+  // And if we don't do that workaround we will have problems when changing the date
+  // Because the shown date will have 1 day more or less than the real date
+  // Leading to bugs where we select 1st of January and it shows 31st of December for example
+  const endOfDayDateTimeInLocalTimezone = DateTime.now().set({
+    day: dateParsed.get('day'),
+    month: dateParsed.get('month'),
+    year: dateParsed.get('year'),
+    hour: 23,
+    minute: 59,
+    second: 59,
+    millisecond: 999,
+  });
+
+  const endOfDayInLocalTimezone = endOfDayDateTimeInLocalTimezone.toJSDate();
+
+  const dateToUse = isDateTimeInput ? endOfDayInLocalTimezone : dateWithoutTime;
+
   return (
-    <StyledContainer>
+    <StyledContainer onKeyDown={handleKeyDown}>
       <div className={clearable ? 'clearable ' : ''}>
         <ReactDatePicker
           open={true}
-          selected={date}
-          showMonthDropdown
-          showYearDropdown
-          onChange={() => {
-            // We need to use onSelect here but onChange is almost redundant with onSelect but is require
-          }}
-          customInput={<></>}
-          onSelect={(date: Date, event) => {
-            if (event?.type === 'click') {
-              onMouseSelect?.(date);
-            } else {
-              onChange?.(date);
-            }
-          }}
-        ></ReactDatePicker>
+          selected={dateToUse}
+          openToDate={isDefined(dateToUse) ? dateToUse : undefined}
+          disabledKeyboardNavigation
+          onChange={handleDateChange}
+          customInput={
+            <DateTimeInput
+              date={internalDate}
+              isDateTimeInput={isDateTimeInput}
+              onChange={onChange}
+              userTimezone={timeZone}
+            />
+          }
+          renderCustomHeader={({
+            prevMonthButtonDisabled,
+            nextMonthButtonDisabled,
+          }) => (
+            <>
+              <DateTimeInput
+                date={internalDate}
+                isDateTimeInput={isDateTimeInput}
+                onChange={onChange}
+                userTimezone={timeZone}
+              />
+              <StyledCustomDatePickerHeader>
+                <Select
+                  dropdownId={MONTH_AND_YEAR_DROPDOWN_MONTH_SELECT_ID}
+                  options={months}
+                  disableBlur
+                  onChange={handleChangeMonth}
+                  value={endOfDayInLocalTimezone.getMonth()}
+                  fullWidth
+                />
+                <Select
+                  dropdownId={MONTH_AND_YEAR_DROPDOWN_YEAR_SELECT_ID}
+                  onChange={handleChangeYear}
+                  value={endOfDayInLocalTimezone.getFullYear()}
+                  options={years}
+                  disableBlur
+                  fullWidth
+                />
+                <LightIconButton
+                  Icon={IconChevronLeft}
+                  onClick={handleSubtractMonth}
+                  size="medium"
+                  disabled={prevMonthButtonDisabled}
+                />
+                <LightIconButton
+                  Icon={IconChevronRight}
+                  onClick={handleAddMonth}
+                  size="medium"
+                  disabled={nextMonthButtonDisabled}
+                />
+              </StyledCustomDatePickerHeader>
+            </>
+          )}
+          onSelect={handleDateSelect}
+        />
       </div>
       {clearable && (
-        <StyledButtonContainer onClick={handleClear} isMenuOpen={false}>
+        <StyledButtonContainer onClick={handleClear}>
           <StyledButton LeftIcon={IconCalendarX} text="Clear" />
         </StyledButtonContainer>
       )}

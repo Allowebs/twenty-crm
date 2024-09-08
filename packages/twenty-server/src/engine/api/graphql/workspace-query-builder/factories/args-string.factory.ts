@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
 
 import { stringifyWithoutKeyQuote } from 'src/engine/api/graphql/workspace-query-builder/utils/stringify-without-key-quote.util';
+import { isDefined } from 'src/utils/is-defined';
 
 import { ArgsAliasFactory } from './args-alias.factory';
 
@@ -13,9 +14,17 @@ export class ArgsStringFactory {
   create(
     initialArgs: Record<string, any> | undefined,
     fieldMetadataCollection: FieldMetadataInterface[],
+    softDeletable?: boolean,
   ): string | null {
     if (!initialArgs) {
       return null;
+    }
+    if (softDeletable) {
+      initialArgs.filter = {
+        and: [initialArgs.filter, { deletedAt: { is: 'NULL' } }].filter(
+          isDefined,
+        ),
+      };
     }
     let argsString = '';
     const computedArgs = this.argsAliasFactory.create(
@@ -36,11 +45,16 @@ export class ArgsStringFactory {
         typeof computedArgs[key] === 'object' &&
         computedArgs[key] !== null
       ) {
-        // If it's an object (and not null), stringify it
-        argsString += `${key}: ${this.buildStringifiedObject(
-          key,
-          computedArgs[key],
-        )}, `;
+        if (key === 'orderBy') {
+          argsString += `${key}: ${this.buildStringifiedOrderBy(
+            computedArgs[key],
+          )}, `;
+        } else {
+          // If it's an object (and not null), stringify it
+          argsString += `${key}: ${stringifyWithoutKeyQuote(
+            computedArgs[key],
+          )}, `;
+        }
       } else {
         // For other types (number, boolean), add as is
         argsString += `${key}: ${computedArgs[key]}, `;
@@ -55,22 +69,30 @@ export class ArgsStringFactory {
     return argsString;
   }
 
-  private buildStringifiedObject(
-    key: string,
-    obj: Record<string, any>,
+  private buildStringifiedOrderBy(
+    keyValuePairArray: Array<Record<string, any>>,
   ): string {
-    // PgGraphql is expecting the orderBy argument to be an array of objects
-    if (key === 'orderBy') {
-      const orderByString = Object.keys(obj)
-        .sort((_, b) => {
-          return b === 'position' ? -1 : 0;
-        })
-        .map((orderByKey) => `{${orderByKey}: ${obj[orderByKey]}}`)
-        .join(', ');
+    if (
+      keyValuePairArray.length !== 0 &&
+      Object.keys(keyValuePairArray[0]).length === 0
+    ) {
+      return `[]`;
+    }
+    // if position argument is present we want to put it at the very last
+    let orderByString = keyValuePairArray
+      .sort((_, obj) => (Object.hasOwnProperty.call(obj, 'position') ? -1 : 0))
+      .map((obj) => {
+        const [key] = Object.keys(obj);
+        const value = obj[key];
 
-      return `[${orderByString}]`;
+        return `{${key}: ${value}}`;
+      })
+      .join(', ');
+
+    if (orderByString.endsWith(', ')) {
+      orderByString = orderByString.slice(0, -2);
     }
 
-    return stringifyWithoutKeyQuote(obj);
+    return `[${orderByString}]`;
   }
 }

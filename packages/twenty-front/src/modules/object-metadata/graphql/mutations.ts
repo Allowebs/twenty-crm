@@ -58,7 +58,7 @@ export const CREATE_ONE_RELATION_METADATA_ITEM = gql`
 
 export const UPDATE_ONE_FIELD_METADATA_ITEM = gql`
   mutation UpdateOneFieldMetadataItem(
-    $idToUpdate: ID!
+    $idToUpdate: UUID!
     $updatePayload: UpdateFieldInput!
   ) {
     updateOneField(input: { id: $idToUpdate, update: $updatePayload }) {
@@ -79,8 +79,8 @@ export const UPDATE_ONE_FIELD_METADATA_ITEM = gql`
 
 export const UPDATE_ONE_OBJECT_METADATA_ITEM = gql`
   mutation UpdateOneObjectMetadataItem(
-    $idToUpdate: ID!
-    $updatePayload: UpdateObjectInput!
+    $idToUpdate: UUID!
+    $updatePayload: UpdateObjectPayload!
   ) {
     updateOneObject(input: { id: $idToUpdate, update: $updatePayload }) {
       id
@@ -102,7 +102,7 @@ export const UPDATE_ONE_OBJECT_METADATA_ITEM = gql`
 `;
 
 export const DELETE_ONE_OBJECT_METADATA_ITEM = gql`
-  mutation DeleteOneObjectMetadataItem($idToDelete: ID!) {
+  mutation DeleteOneObjectMetadataItem($idToDelete: UUID!) {
     deleteOneObject(input: { id: $idToDelete }) {
       id
       dataSourceId
@@ -123,7 +123,7 @@ export const DELETE_ONE_OBJECT_METADATA_ITEM = gql`
 `;
 
 export const DELETE_ONE_FIELD_METADATA_ITEM = gql`
-  mutation DeleteOneFieldMetadataItem($idToDelete: ID!) {
+  mutation DeleteOneFieldMetadataItem($idToDelete: UUID!) {
     deleteOneField(input: { id: $idToDelete }) {
       id
       type
@@ -136,6 +136,14 @@ export const DELETE_ONE_FIELD_METADATA_ITEM = gql`
       isNullable
       createdAt
       updatedAt
+    }
+  }
+`;
+
+export const DELETE_ONE_RELATION_METADATA_ITEM = gql`
+  mutation DeleteOneRelationMetadataItem($idToDelete: UUID!) {
+    deleteOneRelation(input: { id: $idToDelete }) {
+      id
     }
   }
 `;

@@ -1,63 +1,53 @@
+import { UseFilters, UseGuards } from '@nestjs/common';
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
-import {
-  BadRequestException,
-  ForbiddenException,
-  InternalServerErrorException,
-  NotFoundException,
-  UseGuards,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 
-import { Repository } from 'typeorm';
-
-import { JwtAuthGuard } from 'src/engine/guards/jwt.auth.guard';
-import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
-import { assert } from 'src/utils/assert';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
-import { User } from 'src/engine/core-modules/user/user.entity';
 import { ApiKeyTokenInput } from 'src/engine/core-modules/auth/dto/api-key-token.input';
-import { ValidatePasswordResetToken } from 'src/engine/core-modules/auth/dto/validate-password-reset-token.entity';
-import { TransientToken } from 'src/engine/core-modules/auth/dto/transient-token.entity';
-import { UserService } from 'src/engine/core-modules/user/services/user.service';
-import { ValidatePasswordResetTokenInput } from 'src/engine/core-modules/auth/dto/validate-password-reset-token.input';
-import { UpdatePasswordViaResetTokenInput } from 'src/engine/core-modules/auth/dto/update-password-via-reset-token.input';
-import { EmailPasswordResetLink } from 'src/engine/core-modules/auth/dto/email-password-reset-link.entity';
-import { InvalidatePassword } from 'src/engine/core-modules/auth/dto/invalidate-password.entity';
-import { EmailPasswordResetLinkInput } from 'src/engine/core-modules/auth/dto/email-password-reset-link.input';
-import { GenerateJwtInput } from 'src/engine/core-modules/auth/dto/generate-jwt.input';
-import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
+import { AppTokenInput } from 'src/engine/core-modules/auth/dto/app-token.input';
 import { AuthorizeApp } from 'src/engine/core-modules/auth/dto/authorize-app.entity';
 import { AuthorizeAppInput } from 'src/engine/core-modules/auth/dto/authorize-app.input';
-import { ExchangeAuthCodeInput } from 'src/engine/core-modules/auth/dto/exchange-auth-code.input';
+import { EmailPasswordResetLink } from 'src/engine/core-modules/auth/dto/email-password-reset-link.entity';
+import { EmailPasswordResetLinkInput } from 'src/engine/core-modules/auth/dto/email-password-reset-link.input';
 import { ExchangeAuthCode } from 'src/engine/core-modules/auth/dto/exchange-auth-code.entity';
+import { ExchangeAuthCodeInput } from 'src/engine/core-modules/auth/dto/exchange-auth-code.input';
+import { GenerateJwtInput } from 'src/engine/core-modules/auth/dto/generate-jwt.input';
+import { InvalidatePassword } from 'src/engine/core-modules/auth/dto/invalidate-password.entity';
+import { TransientToken } from 'src/engine/core-modules/auth/dto/transient-token.entity';
+import { UpdatePasswordViaResetTokenInput } from 'src/engine/core-modules/auth/dto/update-password-via-reset-token.input';
+import { ValidatePasswordResetToken } from 'src/engine/core-modules/auth/dto/validate-password-reset-token.entity';
+import { ValidatePasswordResetTokenInput } from 'src/engine/core-modules/auth/dto/validate-password-reset-token.input';
+import { AuthGraphqlApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-graphql-api-exception.filter';
+import { UserService } from 'src/engine/core-modules/user/services/user.service';
+import { User } from 'src/engine/core-modules/user/user.entity';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
+import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
+import { JwtAuthGuard } from 'src/engine/guards/jwt.auth.guard';
+import { CaptchaGuard } from 'src/engine/integrations/captcha/captcha.guard';
 
-import { ApiKeyToken, AuthTokens } from './dto/token.entity';
-import { TokenService } from './services/token.service';
-import { RefreshTokenInput } from './dto/refresh-token.input';
-import { Verify } from './dto/verify.entity';
-import { VerifyInput } from './dto/verify.input';
-import { AuthService } from './services/auth.service';
-import { LoginToken } from './dto/login-token.entity';
 import { ChallengeInput } from './dto/challenge.input';
+import { ImpersonateInput } from './dto/impersonate.input';
+import { LoginToken } from './dto/login-token.entity';
+import { SignUpInput } from './dto/sign-up.input';
+import { ApiKeyToken, AuthTokens } from './dto/token.entity';
 import { UserExists } from './dto/user-exists.entity';
 import { CheckUserExistsInput } from './dto/user-exists.input';
+import { Verify } from './dto/verify.entity';
+import { VerifyInput } from './dto/verify.input';
 import { WorkspaceInviteHashValid } from './dto/workspace-invite-hash-valid.entity';
 import { WorkspaceInviteHashValidInput } from './dto/workspace-invite-hash.input';
-import { SignUpInput } from './dto/sign-up.input';
-import { ImpersonateInput } from './dto/impersonate.input';
+import { AuthService } from './services/auth.service';
+import { TokenService } from './services/token.service';
 
 @Resolver()
+@UseFilters(AuthGraphqlApiExceptionFilter)
 export class AuthResolver {
   constructor(
-    @InjectRepository(Workspace, 'core')
-    private readonly workspaceRepository: Repository<Workspace>,
     private authService: AuthService,
     private tokenService: TokenService,
     private userService: UserService,
-    private userWorkspaceService: UserWorkspaceService,
   ) {}
 
+  @UseGuards(CaptchaGuard)
   @Query(() => UserExists)
   async checkUserExists(
     @Args() checkUserExistsInput: CheckUserExistsInput,
@@ -81,12 +71,13 @@ export class AuthResolver {
   @Query(() => Workspace)
   async findWorkspaceFromInviteHash(
     @Args() workspaceInviteHashValidInput: WorkspaceInviteHashValidInput,
-  ) {
-    return await this.workspaceRepository.findOneBy({
-      inviteHash: workspaceInviteHashValidInput.inviteHash,
-    });
+  ): Promise<Workspace> {
+    return await this.authService.findWorkspaceFromInviteHashOrFail(
+      workspaceInviteHashValidInput.inviteHash,
+    );
   }
 
+  @UseGuards(CaptchaGuard)
   @Mutation(() => LoginToken)
   async challenge(@Args() challengeInput: ChallengeInput): Promise<LoginToken> {
     const user = await this.authService.challenge(challengeInput);
@@ -95,13 +86,28 @@ export class AuthResolver {
     return { loginToken };
   }
 
+  @UseGuards(CaptchaGuard)
   @Mutation(() => LoginToken)
   async signUp(@Args() signUpInput: SignUpInput): Promise<LoginToken> {
-    const user = await this.authService.signUp(signUpInput);
+    const user = await this.authService.signInUp({
+      ...signUpInput,
+      fromSSO: false,
+    });
 
     const loginToken = await this.tokenService.generateLoginToken(user.email);
 
     return { loginToken };
+  }
+
+  @Mutation(() => ExchangeAuthCode)
+  async exchangeAuthorizationCode(
+    @Args() exchangeAuthCodeInput: ExchangeAuthCodeInput,
+  ) {
+    const tokens = await this.tokenService.verifyAuthorizationCode(
+      exchangeAuthCodeInput,
+    );
+
+    return tokens;
   }
 
   @Mutation(() => TransientToken)
@@ -116,6 +122,7 @@ export class AuthResolver {
     }
     const transientToken = await this.tokenService.generateTransientToken(
       workspaceMember.id,
+      user.id,
       user.defaultWorkspace.id,
     );
 
@@ -128,8 +135,6 @@ export class AuthResolver {
       verifyInput.loginToken,
     );
 
-    assert(email, 'Invalid token', ForbiddenException);
-
     const result = await this.authService.verify(email);
 
     return result;
@@ -137,22 +142,16 @@ export class AuthResolver {
 
   @Mutation(() => AuthorizeApp)
   @UseGuards(JwtAuthGuard)
-  authorizeApp(@Args() authorizeAppInput: AuthorizeAppInput): AuthorizeApp {
-    const authorizedApp =
-      this.authService.generateAuthorizationCode(authorizeAppInput);
-
-    return authorizedApp;
-  }
-
-  @Query(() => ExchangeAuthCode)
-  async exchangeAuthorizationCode(
-    @Args() exchangeAuthCodeInput: ExchangeAuthCodeInput,
-  ) {
-    const tokens = await this.tokenService.verifyAuthorizationCode(
-      exchangeAuthCodeInput,
+  async authorizeApp(
+    @Args() authorizeAppInput: AuthorizeAppInput,
+    @AuthUser() user: User,
+  ): Promise<AuthorizeApp> {
+    const authorizedApp = await this.authService.generateAuthorizationCode(
+      authorizeAppInput,
+      user,
     );
 
-    return tokens;
+    return authorizedApp;
   }
 
   @Mutation(() => AuthTokens)
@@ -170,13 +169,9 @@ export class AuthResolver {
   }
 
   @Mutation(() => AuthTokens)
-  async renewToken(@Args() args: RefreshTokenInput): Promise<AuthTokens> {
-    if (!args.refreshToken) {
-      throw new BadRequestException('Refresh token is mendatory');
-    }
-
+  async renewToken(@Args() args: AppTokenInput): Promise<AuthTokens> {
     const tokens = await this.tokenService.generateTokensFromRefreshToken(
-      args.refreshToken,
+      args.appToken,
     );
 
     return { tokens: tokens };
@@ -188,10 +183,7 @@ export class AuthResolver {
     @Args() impersonateInput: ImpersonateInput,
     @AuthUser() user: User,
   ): Promise<Verify> {
-    // Check if user can impersonate
-    assert(user.canImpersonate, 'User cannot impersonate', ForbiddenException);
-
-    return this.authService.impersonate(impersonateInput.userId);
+    return await this.authService.impersonate(impersonateInput.userId, user);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -223,20 +215,13 @@ export class AuthResolver {
 
   @Mutation(() => InvalidatePassword)
   async updatePasswordViaResetToken(
-    @Args() args: UpdatePasswordViaResetTokenInput,
+    @Args()
+    { passwordResetToken, newPassword }: UpdatePasswordViaResetTokenInput,
   ): Promise<InvalidatePassword> {
-    const { id } = await this.tokenService.validatePasswordResetToken(
-      args.passwordResetToken,
-    );
+    const { id } =
+      await this.tokenService.validatePasswordResetToken(passwordResetToken);
 
-    assert(id, 'User not found', NotFoundException);
-
-    const { success } = await this.authService.updatePassword(
-      id,
-      args.newPassword,
-    );
-
-    assert(success, 'Password update failed', InternalServerErrorException);
+    await this.authService.updatePassword(id, newPassword);
 
     return await this.tokenService.invalidatePasswordResetToken(id);
   }

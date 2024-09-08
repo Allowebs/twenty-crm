@@ -1,9 +1,9 @@
+import styled from '@emotion/styled';
 import { ReactNode, useContext, useState } from 'react';
 import { useInView } from 'react-intersection-observer';
-import styled from '@emotion/styled';
 import { useRecoilState, useRecoilValue, useSetRecoilState } from 'recoil';
+import { AvatarChipVariant, IconEye } from 'twenty-ui';
 
-import { RecordChip } from '@/object-record/components/RecordChip';
 import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
 import { useRecordBoardStates } from '@/object-record/record-board/hooks/internal/useRecordBoardStates';
 import { RecordBoardCardContext } from '@/object-record/record-board/record-board-card/contexts/RecordBoardCardContext';
@@ -12,16 +12,18 @@ import {
   RecordUpdateHook,
   RecordUpdateHookParams,
 } from '@/object-record/record-field/contexts/FieldContext';
+import { getFieldButtonIcon } from '@/object-record/record-field/utils/getFieldButtonIcon';
+import { RecordIdentifierChip } from '@/object-record/record-index/components/RecordIndexRecordChip';
 import { RecordInlineCell } from '@/object-record/record-inline-cell/components/RecordInlineCell';
 import { InlineCellHotkeyScope } from '@/object-record/record-inline-cell/types/InlineCellHotkeyScope';
+import { RecordValueSetterEffect } from '@/object-record/record-store/components/RecordValueSetterEffect';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { IconEye } from '@/ui/display/icon/index';
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { Checkbox, CheckboxVariant } from '@/ui/input/components/Checkbox';
 import { contextMenuIsOpenState } from '@/ui/navigation/context-menu/states/contextMenuIsOpenState';
 import { contextMenuPositionState } from '@/ui/navigation/context-menu/states/contextMenuPositionState';
 import { AnimatedEaseInOut } from '@/ui/utilities/animation/components/AnimatedEaseInOut';
-import { ScrollWrapperContext } from '@/ui/utilities/scroll/components/ScrollWrapper';
+import { RecordBoardScrollWrapperContext } from '@/ui/utilities/scroll/contexts/ScrollWrapperContexts';
 
 const StyledBoardCard = styled.div<{ selected: boolean }>`
   background-color: ${({ theme, selected }) =>
@@ -64,7 +66,7 @@ const StyledBoardCardWrapper = styled.div`
   width: 100%;
 `;
 
-const StyledBoardCardHeader = styled.div<{
+export const StyledBoardCardHeader = styled.div<{
   showCompactView: boolean;
 }>`
   align-items: center;
@@ -87,7 +89,7 @@ const StyledBoardCardHeader = styled.div<{
   }
 `;
 
-const StyledBoardCardBody = styled.div`
+export const StyledBoardCardBody = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.spacing(0.5)};
@@ -115,6 +117,7 @@ const StyledFieldContainer = styled.div`
   display: flex;
   flex-direction: row;
   width: fit-content;
+  max-width: 100%;
 `;
 
 const StyledCompactIconContainer = styled.div`
@@ -196,10 +199,10 @@ export const RecordBoardCard = () => {
     return [updateEntity, { loading: false }];
   };
 
-  const scrollWrapperRef = useContext(ScrollWrapperContext);
+  const scrollWrapperRef = useContext(RecordBoardScrollWrapperContext);
 
   const { ref: cardRef, inView } = useInView({
-    root: scrollWrapperRef.current,
+    root: scrollWrapperRef?.ref.current,
     rootMargin: '1000px',
   });
 
@@ -207,8 +210,13 @@ export const RecordBoardCard = () => {
     return null;
   }
 
+  const visibleFieldDefinitionsFiltered = visibleFieldDefinitions.filter(
+    (boardField) => !boardField.isLabelIdentifier,
+  );
+
   return (
     <StyledBoardCardWrapper onContextMenu={handleContextMenu}>
+      <RecordValueSetterEffect recordId={recordId} />
       <StyledBoardCard
         ref={cardRef}
         selected={isCurrentCardSelected}
@@ -218,9 +226,10 @@ export const RecordBoardCard = () => {
         }}
       >
         <StyledBoardCardHeader showCompactView={isCompactModeActive}>
-          <RecordChip
+          <RecordIdentifierChip
             objectNameSingular={objectMetadataItem.nameSingular}
             record={record}
+            variant={AvatarChipVariant.Transparent}
           />
           {isCompactModeActive && (
             <StyledCompactIconContainer className="compact-icon-container">
@@ -236,6 +245,7 @@ export const RecordBoardCard = () => {
           )}
           <StyledCheckboxContainer className="checkbox-container">
             <Checkbox
+              hoverable
               checked={isCurrentCardSelected}
               onChange={() => setIsCurrentCardSelected(!isCurrentCardSelected)}
               variant={CheckboxVariant.Secondary}
@@ -247,23 +257,28 @@ export const RecordBoardCard = () => {
             isOpen={!isCardInCompactMode || !isCompactModeActive}
             initial={false}
           >
-            {visibleFieldDefinitions.map((fieldDefinition) => (
+            {visibleFieldDefinitionsFiltered.map((fieldDefinition) => (
               <PreventSelectOnClickContainer
                 key={fieldDefinition.fieldMetadataId}
               >
                 <FieldContext.Provider
                   value={{
-                    entityId: recordId,
+                    recordId,
                     maxWidth: 156,
                     recoilScopeId: recordId + fieldDefinition.fieldMetadataId,
                     isLabelIdentifier: false,
                     fieldDefinition: {
-                      disableTooltip: true,
+                      disableTooltip: false,
                       fieldMetadataId: fieldDefinition.fieldMetadataId,
                       label: fieldDefinition.label,
                       iconName: fieldDefinition.iconName,
                       type: fieldDefinition.type,
                       metadata: fieldDefinition.metadata,
+                      defaultValue: fieldDefinition.defaultValue,
+                      editButtonIcon: getFieldButtonIcon({
+                        metadata: fieldDefinition.metadata,
+                        type: fieldDefinition.type,
+                      }),
                     },
                     useUpdateRecord: useUpdateOneRecordHook,
                     hotkeyScope: InlineCellHotkeyScope.InlineCell,

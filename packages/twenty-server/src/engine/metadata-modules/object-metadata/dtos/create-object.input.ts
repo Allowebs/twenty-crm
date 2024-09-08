@@ -1,10 +1,20 @@
 import { Field, HideField, InputType } from '@nestjs/graphql';
 
 import { BeforeCreateOne } from '@ptc-org/nestjs-query-graphql';
-import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
+import GraphQLJSON from 'graphql-type-json';
+
+import { FieldMetadataSettings } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata-settings.interface';
 
 import { IsValidMetadataName } from 'src/engine/decorators/metadata/is-valid-metadata-name.decorator';
 import { BeforeCreateOneObject } from 'src/engine/metadata-modules/object-metadata/hooks/before-create-one-object.hook';
+import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 
 @InputType()
 @BeforeCreateOne(BeforeCreateOneObject)
@@ -56,4 +66,19 @@ export class CreateObjectInput {
   @IsOptional()
   @Field({ nullable: true })
   imageIdentifierFieldMetadataId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  @Field({ nullable: true })
+  isRemote?: boolean;
+
+  @IsOptional()
+  @Field({ nullable: true })
+  primaryKeyColumnType?: string;
+
+  @IsOptional()
+  @Field(() => GraphQLJSON, { nullable: true })
+  primaryKeyFieldMetadataSettings?: FieldMetadataSettings<
+    FieldMetadataType | 'default'
+  >;
 }

@@ -1,4 +1,5 @@
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconComponent } from 'twenty-ui';
+
 import { LightIconButtonGroup } from '@/ui/input/button/components/LightIconButtonGroup';
 
 import { MenuItemLeftContent } from '../internals/components/MenuItemLeftContent';
@@ -14,32 +15,45 @@ export type MenuItemDraggableProps = {
   isTooltipOpen?: boolean;
   onClick?: () => void;
   text: string;
-  isDragDisabled?: boolean;
   className?: string;
+  isIconDisplayedOnHoverOnly?: boolean;
+  showGrip?: boolean;
+  isDragDisabled?: boolean;
+  isHoverDisabled?: boolean;
 };
+
 export const MenuItemDraggable = ({
   LeftIcon,
   accent = 'default',
   iconButtons,
-  isTooltipOpen,
   onClick,
   text,
   isDragDisabled = false,
   className,
+  isIconDisplayedOnHoverOnly = true,
+  showGrip = false,
 }: MenuItemDraggableProps) => {
   const showIconButtons = Array.isArray(iconButtons) && iconButtons.length > 0;
+
+  const cursorType = showGrip
+    ? isDragDisabled
+      ? 'not-allowed'
+      : 'drag'
+    : 'default';
 
   return (
     <StyledHoverableMenuItemBase
       onClick={onClick}
       accent={accent}
       className={className}
-      isMenuOpen={!!isTooltipOpen}
+      isIconDisplayedOnHoverOnly={isIconDisplayedOnHoverOnly}
+      cursor={cursorType}
     >
       <MenuItemLeftContent
         LeftIcon={LeftIcon}
         text={text}
-        showGrip={!isDragDisabled}
+        isDisabled={isDragDisabled}
+        showGrip={showGrip}
       />
       {showIconButtons && (
         <LightIconButtonGroup

@@ -10,10 +10,26 @@ export function generateDefaultValue(
     case FieldMetadataType.PHONE:
     case FieldMetadataType.EMAIL:
       return "''";
+    case FieldMetadataType.EMAILS:
+      return {
+        primaryEmail: "''",
+        additionalEmails: null,
+      };
     case FieldMetadataType.FULL_NAME:
       return {
         firstName: "''",
         lastName: "''",
+      };
+    case FieldMetadataType.ADDRESS:
+      return {
+        addressStreet1: "''",
+        addressStreet2: "''",
+        addressCity: "''",
+        addressState: "''",
+        addressCountry: "''",
+        addressPostcode: "''",
+        addressLat: null,
+        addressLng: null,
       };
     case FieldMetadataType.LINK:
       return {
@@ -24,6 +40,12 @@ export function generateDefaultValue(
       return {
         amountMicros: null,
         currencyCode: "''",
+      };
+    case FieldMetadataType.LINKS:
+      return {
+        primaryLinkLabel: "''",
+        primaryLinkUrl: "''",
+        secondaryLinks: null,
       };
     default:
       return null;

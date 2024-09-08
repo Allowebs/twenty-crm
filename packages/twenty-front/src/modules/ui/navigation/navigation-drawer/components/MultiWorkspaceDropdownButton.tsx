@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useRecoilValue } from 'recoil';
+import { IconChevronDown } from 'twenty-ui';
 
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { Workspaces } from '@/auth/states/workspaces';
-import { IconChevronDown } from '@/ui/display/icon';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
@@ -14,6 +14,7 @@ import { DEFAULT_WORKSPACE_LOGO } from '@/ui/navigation/navigation-drawer/consta
 import { MULTI_WORKSPACE_DROPDOWN_ID } from '@/ui/navigation/navigation-drawer/constants/MulitWorkspaceDropdownId';
 import { useWorkspaceSwitching } from '@/ui/navigation/navigation-drawer/hooks/useWorkspaceSwitching';
 import { NavigationDrawerHotKeyScope } from '@/ui/navigation/navigation-drawer/types/NavigationDrawerHotKeyScope';
+import { getImageAbsoluteURI } from '~/utils/image/getImageAbsoluteURI';
 
 const StyledLogo = styled.div<{ logo: string }>`
   background: url(${({ logo }) => logo});
@@ -32,9 +33,11 @@ const StyledContainer = styled.div`
   border: 1px solid transparent;
   display: flex;
   justify-content: space-between;
-  height: ${({ theme }) => theme.spacing(7)};
-  padding: 0 ${({ theme }) => theme.spacing(2)};
+  height: ${({ theme }) => theme.spacing(5)};
+  padding: calc(${({ theme }) => theme.spacing(1)} - 1px);
   width: 100%;
+
+  gap: ${({ theme }) => theme.spacing(1)};
 
   &:hover {
     background-color: ${({ theme }) => theme.background.transparent.lighter};
@@ -45,7 +48,6 @@ const StyledContainer = styled.div`
 const StyledLabel = styled.div`
   align-items: center;
   display: flex;
-  gap: ${({ theme }) => theme.spacing(2)};
 `;
 
 const StyledIconChevronDown = styled(IconChevronDown)<{ disabled?: boolean }>`
@@ -86,9 +88,11 @@ export const MultiWorkspaceDropdownButton = ({
         <StyledContainer>
           <StyledLogo
             logo={
-              currentWorkspace?.logo === null
-                ? DEFAULT_WORKSPACE_LOGO
-                : currentWorkspace?.logo ?? ''
+              getImageAbsoluteURI(
+                currentWorkspace?.logo === null
+                  ? DEFAULT_WORKSPACE_LOGO
+                  : currentWorkspace?.logo,
+              ) ?? ''
             }
           />
           <StyledLabel>{currentWorkspace?.displayName ?? ''}</StyledLabel>
@@ -103,13 +107,15 @@ export const MultiWorkspaceDropdownButton = ({
           {workspaces.map((workspace) => (
             <MenuItemSelectAvatar
               key={workspace.id}
-              text={workspace.displayName!}
+              text={workspace.displayName ?? ''}
               avatar={
                 <StyledLogo
                   logo={
-                    workspace.logo === null
-                      ? DEFAULT_WORKSPACE_LOGO
-                      : workspace.logo ?? ''
+                    getImageAbsoluteURI(
+                      workspace.logo === null
+                        ? DEFAULT_WORKSPACE_LOGO
+                        : workspace.logo,
+                    ) ?? ''
                   }
                 />
               }

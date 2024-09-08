@@ -6,6 +6,7 @@ export const GET_CLIENT_CONFIG = gql`
       authProviders {
         google
         password
+        microsoft
       }
       billing {
         isBillingEnabled
@@ -17,7 +18,6 @@ export const GET_CLIENT_CONFIG = gql`
       debugMode
       telemetry {
         enabled
-        anonymizationEnabled
       }
       support {
         supportDriver
@@ -25,7 +25,17 @@ export const GET_CLIENT_CONFIG = gql`
       }
       sentry {
         dsn
+        environment
+        release
       }
+      captcha {
+        provider
+        siteKey
+      }
+      api {
+        mutationMaximumAffectedRecords
+      }
+      chromeExtensionId
     }
   }
 `;

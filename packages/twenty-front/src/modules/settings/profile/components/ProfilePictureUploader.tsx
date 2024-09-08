@@ -5,7 +5,6 @@ import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMembe
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { ImageInput } from '@/ui/input/components/ImageInput';
-import { getImageAbsoluteURIOrBase64 } from '@/users/utils/getProfilePictureAbsoluteURI';
 import { useUploadProfilePictureMutation } from '~/generated/graphql';
 import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
@@ -52,7 +51,7 @@ export const ProfilePictureUploader = () => {
       setUploadController(null);
       setErrorMessage(null);
 
-      const avatarUrl = result?.data?.uploadProfilePicture;
+      const avatarUrl = result?.data?.uploadProfilePicture.split('?')[0];
 
       if (!avatarUrl) {
         throw new Error('Avatar URL not found');
@@ -65,7 +64,10 @@ export const ProfilePictureUploader = () => {
         },
       });
 
-      setCurrentWorkspaceMember({ ...currentWorkspaceMember, avatarUrl });
+      setCurrentWorkspaceMember({
+        ...currentWorkspaceMember,
+        avatarUrl: result?.data?.uploadProfilePicture,
+      });
 
       return result;
     } catch (error) {
@@ -101,7 +103,7 @@ export const ProfilePictureUploader = () => {
 
   return (
     <ImageInput
-      picture={getImageAbsoluteURIOrBase64(currentWorkspaceMember?.avatarUrl)}
+      picture={currentWorkspaceMember?.avatarUrl}
       onUpload={handleUpload}
       onRemove={handleRemove}
       onAbort={handleAbort}

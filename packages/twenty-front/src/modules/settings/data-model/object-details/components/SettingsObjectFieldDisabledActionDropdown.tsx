@@ -1,21 +1,26 @@
-import { IconArchiveOff, IconDotsVertical } from '@/ui/display/icon';
+import { IconArchiveOff, IconDotsVertical, IconTrash } from 'twenty-ui';
+
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
 import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 type SettingsObjectFieldInactiveActionDropdownProps = {
   isCustomField?: boolean;
+  fieldType?: FieldMetadataType;
   onActivate: () => void;
-  onErase: () => void;
+  onDelete: () => void;
   scopeKey: string;
 };
 
 export const SettingsObjectFieldInactiveActionDropdown = ({
   onActivate,
   scopeKey,
+  onDelete,
+  isCustomField,
 }: SettingsObjectFieldInactiveActionDropdownProps) => {
   const dropdownId = `${scopeKey}-settings-field-disabled-action-dropdown`;
 
@@ -26,10 +31,12 @@ export const SettingsObjectFieldInactiveActionDropdown = ({
     closeDropdown();
   };
 
-  // const handleErase = () => {
-  //   onErase();
-  //   closeDropdown();
-  // };
+  const handleDelete = () => {
+    onDelete();
+    closeDropdown();
+  };
+
+  const isDeletable = isCustomField;
 
   return (
     <Dropdown
@@ -45,14 +52,14 @@ export const SettingsObjectFieldInactiveActionDropdown = ({
               LeftIcon={IconArchiveOff}
               onClick={handleActivate}
             />
-            {/* {isCustomField && (
-                <MenuItem
-                  text="Erase"
-                  accent="danger"
-                  LeftIcon={IconTrash}
-                  onClick={handleErase}
-                />
-              )} */}
+            {isDeletable && (
+              <MenuItem
+                text="Delete"
+                accent="danger"
+                LeftIcon={IconTrash}
+                onClick={handleDelete}
+              />
+            )}
           </DropdownMenuItemsContainer>
         </DropdownMenu>
       }

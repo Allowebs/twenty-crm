@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { EntityManager } from 'typeorm';
 
@@ -17,14 +17,10 @@ import { WorkspaceMigrationEntity } from 'src/engine/metadata-modules/workspace-
 import { WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
 import { WorkspaceMigrationRelationFactory } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-relation.factory';
 import { standardObjectMetadataDefinitions } from 'src/engine/workspace-manager/workspace-sync-metadata/standard-objects';
-import { CustomObjectMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/custom-objects/custom.object-metadata';
+import { CustomWorkspaceEntity } from 'src/engine/twenty-orm/custom.workspace-entity';
 
 @Injectable()
 export class WorkspaceSyncRelationMetadataService {
-  private readonly logger = new Logger(
-    WorkspaceSyncRelationMetadataService.name,
-  );
-
   constructor(
     private readonly standardRelationFactory: StandardRelationFactory,
     private readonly workspaceRelationComparator: WorkspaceRelationComparator,
@@ -46,7 +42,6 @@ export class WorkspaceSyncRelationMetadataService {
       await objectMetadataRepository.find({
         where: {
           workspaceId: context.workspaceId,
-          fields: { isCustom: false },
         },
         relations: ['dataSource', 'fields'],
       });
@@ -88,7 +83,7 @@ export class WorkspaceSyncRelationMetadataService {
       this.standardRelationFactory.create(
         customObjectMetadataCollection.map((objectMetadata) => ({
           object: objectMetadata,
-          metadata: CustomObjectMetadata,
+          metadata: CustomWorkspaceEntity,
         })),
         context,
         originalObjectMetadataMap,

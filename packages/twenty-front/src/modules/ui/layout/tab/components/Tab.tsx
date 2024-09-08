@@ -1,9 +1,6 @@
-import * as React from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-import { Pill } from 'twenty-ui';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconComponent, Pill } from 'twenty-ui';
 
 type TabProps = {
   id: string;
@@ -13,7 +10,7 @@ type TabProps = {
   className?: string;
   onClick?: () => void;
   disabled?: boolean;
-  hasBetaPill?: boolean;
+  pill?: string;
 };
 
 const StyledTab = styled.div<{ active?: boolean; disabled?: boolean }>`
@@ -43,6 +40,7 @@ const StyledHover = styled.span`
   padding: ${({ theme }) => theme.spacing(1)};
   padding-left: ${({ theme }) => theme.spacing(2)};
   padding-right: ${({ theme }) => theme.spacing(2)};
+  font-weight: ${({ theme }) => theme.font.weight.medium};
 
   &:hover {
     background: ${({ theme }) => theme.background.tertiary};
@@ -61,7 +59,7 @@ export const Tab = ({
   onClick,
   className,
   disabled,
-  hasBetaPill,
+  pill,
 }: TabProps) => {
   const theme = useTheme();
   return (
@@ -75,7 +73,7 @@ export const Tab = ({
       <StyledHover>
         {Icon && <Icon size={theme.icon.size.md} />}
         {title}
-        {hasBetaPill && <Pill label="Beta" />}
+        {pill && <Pill label={pill} />}
       </StyledHover>
     </StyledTab>
   );

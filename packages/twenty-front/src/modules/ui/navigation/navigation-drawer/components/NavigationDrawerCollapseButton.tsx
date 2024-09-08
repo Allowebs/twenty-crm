@@ -1,10 +1,10 @@
 import styled from '@emotion/styled';
 import { useSetRecoilState } from 'recoil';
-
 import {
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarRightCollapse,
-} from '@/ui/display/icon';
+} from 'twenty-ui';
+
 import { IconButton } from '@/ui/input/button/components/IconButton';
 import { isNavigationDrawerOpenState } from '@/ui/navigation/states/isNavigationDrawerOpenState';
 
@@ -14,7 +14,7 @@ const StyledCollapseButton = styled.div`
   color: ${({ theme }) => theme.font.color.light};
   cursor: pointer;
   display: flex;
-  height: ${({ theme }) => theme.spacing(6)};
+  height: ${({ theme }) => theme.spacing(5)};
   justify-content: center;
   user-select: none;
   width: ${({ theme }) => theme.spacing(6)};

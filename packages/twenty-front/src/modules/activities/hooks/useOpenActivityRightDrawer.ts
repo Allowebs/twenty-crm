@@ -1,34 +1,42 @@
 import { useRecoilState, useSetRecoilState } from 'recoil';
 
-import { activityIdInDrawerState } from '@/activities/states/activityIdInDrawerState';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { viewableRecordIdState } from '@/object-record/record-right-drawer/states/viewableRecordIdState';
+import { viewableRecordNameSingularState } from '@/object-record/record-right-drawer/states/viewableRecordNameSingularState';
 import { useRightDrawer } from '@/ui/layout/right-drawer/hooks/useRightDrawer';
 import { RightDrawerHotkeyScope } from '@/ui/layout/right-drawer/types/RightDrawerHotkeyScope';
 import { RightDrawerPages } from '@/ui/layout/right-drawer/types/RightDrawerPages';
 import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
 
-import { viewableActivityIdState } from '../states/viewableActivityIdState';
-
-export const useOpenActivityRightDrawer = () => {
+export const useOpenActivityRightDrawer = ({
+  objectNameSingular,
+}: {
+  objectNameSingular: CoreObjectNameSingular;
+}) => {
   const { openRightDrawer, isRightDrawerOpen, rightDrawerPage } =
     useRightDrawer();
-  const [viewableActivityId, setViewableActivityId] = useRecoilState(
-    viewableActivityIdState,
+  const [viewableRecordId, setViewableRecordId] = useRecoilState(
+    viewableRecordIdState,
   );
-  const setActivityIdInDrawer = useSetRecoilState(activityIdInDrawerState);
+
+  const setViewableRecordNameSingular = useSetRecoilState(
+    viewableRecordNameSingularState,
+  );
+
   const setHotkeyScope = useSetHotkeyScope();
 
   return (activityId: string) => {
     if (
       isRightDrawerOpen &&
-      rightDrawerPage === RightDrawerPages.EditActivity &&
-      viewableActivityId === activityId
+      rightDrawerPage === RightDrawerPages.ViewRecord &&
+      viewableRecordId === activityId
     ) {
       return;
     }
 
     setHotkeyScope(RightDrawerHotkeyScope.RightDrawer, { goto: false });
-    setViewableActivityId(activityId);
-    setActivityIdInDrawer(activityId);
-    openRightDrawer(RightDrawerPages.EditActivity);
+    setViewableRecordId(activityId);
+    setViewableRecordNameSingular(objectNameSingular);
+    openRightDrawer(RightDrawerPages.ViewRecord);
   };
 };

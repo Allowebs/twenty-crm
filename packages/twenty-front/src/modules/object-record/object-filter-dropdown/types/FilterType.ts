@@ -2,10 +2,17 @@ export type FilterType =
   | 'TEXT'
   | 'PHONE'
   | 'EMAIL'
+  | 'EMAILS'
   | 'DATE_TIME'
+  | 'DATE'
   | 'NUMBER'
   | 'CURRENCY'
   | 'FULL_NAME'
   | 'LINK'
+  | 'LINKS'
   | 'RELATION'
-  | 'SELECT';
+  | 'ADDRESS'
+  | 'SELECT'
+  | 'RATING'
+  | 'MULTI_SELECT'
+  | 'ACTOR';

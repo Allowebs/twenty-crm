@@ -6,8 +6,9 @@ import { ExceptionHandlerDriver } from 'src/engine/integrations/exception-handle
 
 /**
  * ExceptionHandler Module factory
- * @param environment
  * @returns ExceptionHandlerModuleOptions
+ * @param environmentService
+ * @param adapterHost
  */
 export const exceptionHandlerModuleFactory = async (
   environmentService: EnvironmentService,
@@ -25,6 +26,8 @@ export const exceptionHandlerModuleFactory = async (
       return {
         type: ExceptionHandlerDriver.Sentry,
         options: {
+          environment: environmentService.get('SENTRY_ENVIRONMENT'),
+          release: environmentService.get('SENTRY_RELEASE'),
           dsn: environmentService.get('SENTRY_DSN') ?? '',
           serverInstance: adapterHost.httpAdapter?.getInstance(),
           debug: environmentService.get('DEBUG_MODE'),

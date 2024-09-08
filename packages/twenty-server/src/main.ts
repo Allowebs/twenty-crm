@@ -1,28 +1,27 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { ConfigService } from '@nestjs/config';
 
 import * as Sentry from '@sentry/node';
-import { graphqlUploadExpress } from 'graphql-upload';
+import '@sentry/tracing';
 import bytes from 'bytes';
 import { useContainer } from 'class-validator';
-import '@sentry/tracing';
+import { graphqlUploadExpress } from 'graphql-upload';
+
+import { ApplyCorsToExceptions } from 'src/utils/apply-cors-to-exceptions';
 
 import { AppModule } from './app.module';
 
-import { generateFrontConfig } from './utils/generate-front-config';
 import { settings } from './engine/constants/settings';
 import { LoggerService } from './engine/integrations/logger/logger.service';
-import { EnvironmentService } from './engine/integrations/environment/environment.service';
+import { generateFrontConfig } from './utils/generate-front-config';
 
 const bootstrap = async () => {
-  const environmentService = new EnvironmentService(new ConfigService());
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: true,
-    bufferLogs: environmentService.get('LOGGER_IS_BUFFER_ENABLED'),
+    bufferLogs: process.env.LOGGER_IS_BUFFER_ENABLED === 'true',
     rawBody: true,
-    snapshot: environmentService.get('DEBUG_MODE'),
+    snapshot: process.env.DEBUG_MODE === 'true',
   });
   const logger = app.get(LoggerService);
 
@@ -40,6 +39,8 @@ const bootstrap = async () => {
     app.use(Sentry.Handlers.requestHandler());
     app.use(Sentry.Handlers.tracingHandler());
   }
+
+  app.useGlobalFilters(new ApplyCorsToExceptions());
 
   // Apply validation pipes globally
   app.useGlobalPipes(
@@ -64,7 +65,7 @@ const bootstrap = async () => {
   // Create the env-config.js of the front at runtime
   generateFrontConfig();
 
-  await app.listen(app.get(EnvironmentService).get('PORT'));
+  await app.listen(process.env.PORT ?? 3000);
 };
 
 bootstrap();

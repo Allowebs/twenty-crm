@@ -1,4 +1,4 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
 
 import { IDField, UnPagedRelation } from '@ptc-org/nestjs-query-graphql';
 import {
@@ -7,14 +7,29 @@ import {
   Entity,
   OneToMany,
   PrimaryGeneratedColumn,
+  Relation,
   UpdateDateColumn,
 } from 'typeorm';
-import Stripe from 'stripe';
 
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { AppToken } from 'src/engine/core-modules/app-token/app-token.entity';
 import { BillingSubscription } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
+import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { KeyValuePair } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
+import { PostgresCredentials } from 'src/engine/core-modules/postgres-credentials/postgres-credentials.entity';
 import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { User } from 'src/engine/core-modules/user/user.entity';
+
+export enum WorkspaceActivationStatus {
+  ONGOING_CREATION = 'ONGOING_CREATION',
+  PENDING_CREATION = 'PENDING_CREATION',
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+}
+
+registerEnumType(WorkspaceActivationStatus, {
+  name: 'WorkspaceActivationStatus',
+});
 
 @Entity({ name: 'workspace', schema: 'core' })
 @ObjectType('Workspace')
@@ -23,7 +38,7 @@ import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-works
   nullable: true,
 })
 export class Workspace {
-  @IDField(() => ID)
+  @IDField(() => UUIDScalarType)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -44,45 +59,74 @@ export class Workspace {
   inviteHash?: string;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'timestamptz' })
   deletedAt?: Date;
 
   @Field()
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn({ type: 'timestamp with time zone' })
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
+  @OneToMany(() => AppToken, (appToken) => appToken.workspace, {
+    cascade: true,
+  })
+  appTokens: Relation<AppToken[]>;
+
+  @OneToMany(() => KeyValuePair, (keyValuePair) => keyValuePair.workspace, {
+    cascade: true,
+  })
+  keyValuePairs: Relation<KeyValuePair[]>;
+
   @OneToMany(() => User, (user) => user.defaultWorkspace)
-  users: User[];
+  users: Relation<User[]>;
 
   @OneToMany(() => UserWorkspace, (userWorkspace) => userWorkspace.workspace, {
     onDelete: 'CASCADE',
   })
-  workspaceUsers: UserWorkspace[];
+  workspaceUsers: Relation<UserWorkspace[]>;
 
   @Field()
   @Column({ default: true })
   allowImpersonation: boolean;
 
   @OneToMany(() => FeatureFlagEntity, (featureFlag) => featureFlag.workspace)
-  featureFlags: FeatureFlagEntity[];
-
-  @Field()
-  @Column({ default: 'incomplete' })
-  subscriptionStatus: Stripe.Subscription.Status;
+  featureFlags: Relation<FeatureFlagEntity[]>;
 
   @Field({ nullable: true })
-  currentBillingSubscription: BillingSubscription;
+  workspaceMembersCount: number;
 
-  @Field()
-  activationStatus: 'active' | 'inactive';
+  @Field(() => WorkspaceActivationStatus)
+  @Column({
+    type: 'enum',
+    enum: WorkspaceActivationStatus,
+    default: WorkspaceActivationStatus.INACTIVE,
+  })
+  activationStatus: WorkspaceActivationStatus;
 
   @OneToMany(
     () => BillingSubscription,
     (billingSubscription) => billingSubscription.workspace,
   )
-  billingSubscriptions: BillingSubscription[];
+  billingSubscriptions: Relation<BillingSubscription[]>;
+
+  @OneToMany(
+    () => PostgresCredentials,
+    (postgresCredentials) => postgresCredentials.workspace,
+  )
+  allPostgresCredentials: Relation<PostgresCredentials[]>;
+
+  @Field()
+  @Column({ default: 1 })
+  metadataVersion: number;
+
+  @Field()
+  @Column({ default: '' })
+  databaseUrl: string;
+
+  @Field()
+  @Column({ default: '' })
+  databaseSchema: string;
 }

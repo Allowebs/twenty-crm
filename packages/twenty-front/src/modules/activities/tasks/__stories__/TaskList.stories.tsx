@@ -1,11 +1,11 @@
 import { Meta, StoryObj } from '@storybook/react';
+import { ComponentDecorator } from 'twenty-ui';
 
 import { TaskList } from '@/activities/tasks/components/TaskList';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
 import { MemoryRouterDecorator } from '~/testing/decorators/MemoryRouterDecorator';
 import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { mockedActivities } from '~/testing/mock-data/activities';
+import { mockedTasks } from '~/testing/mock-data/tasks';
 
 const meta: Meta<typeof TaskList> = {
   title: 'Modules/Activity/TaskList',
@@ -13,7 +13,7 @@ const meta: Meta<typeof TaskList> = {
   decorators: [MemoryRouterDecorator, ComponentDecorator, SnackBarDecorator],
   args: {
     title: 'Tasks',
-    tasks: mockedActivities,
+    tasks: mockedTasks,
   },
   parameters: {
     msw: graphqlMocks,
@@ -26,6 +26,6 @@ type Story = StoryObj<typeof TaskList>;
 export const Default: Story = {
   args: {
     title: 'Tasks',
-    tasks: mockedActivities,
+    tasks: mockedTasks,
   },
 };

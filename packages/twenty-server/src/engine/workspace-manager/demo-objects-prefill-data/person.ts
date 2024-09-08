@@ -1,6 +1,6 @@
 import { EntityManager } from 'typeorm';
 
-import peopleDemo from './people-demo.json';
+import { peopleDemo } from 'src/engine/workspace-manager/demo-objects-prefill-data/people-demo.json';
 
 export const personPrefillDemoData = async (
   entityManager: EntityManager,
@@ -15,12 +15,15 @@ export const personPrefillDemoData = async (
     nameFirstName: person.firstName,
     nameLastName: person.lastName,
     email: person.email,
-    linkedinLinkUrl: person.linkedinUrl,
+    linkedinLinkPrimaryLinkUrl: person.linkedinUrl,
     jobTitle: person.jobTitle,
     city: person.city,
     avatarUrl: person.avatarUrl,
-    position: index,
     companyId: companies[Math.floor(index / 2)].id,
+    createdBySource: person.createdBySource,
+    createdByWorkspaceMemberId: person.createdByWorkspaceMemberId,
+    createdByName: person.createdByName,
+    position: index
   }));
 
   await entityManager
@@ -30,12 +33,15 @@ export const personPrefillDemoData = async (
       'nameFirstName',
       'nameLastName',
       'email',
-      'linkedinLinkUrl',
+      'linkedinLinkPrimaryLinkUrl',
       'jobTitle',
       'city',
       'avatarUrl',
-      'position',
       'companyId',
+      'createdBySource',
+      'createdByWorkspaceMemberId',
+      'createdByName',
+      'position',
     ])
     .orIgnore()
     .values(people)

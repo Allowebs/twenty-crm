@@ -1,26 +1,28 @@
+/* eslint-disable @nx/workspace-inject-workspace-repository */
 import { InjectRepository } from '@nestjs/typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { TypeOrmQueryService } from '@ptc-org/nestjs-query-typeorm';
 import { Repository } from 'typeorm';
 
-import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { TypeORMService } from 'src/database/typeorm/typeorm.service';
-import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
+import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { User } from 'src/engine/core-modules/user/user.entity';
-import { WorkspaceDataSourceService } from 'src/engine/workspace-datasource/workspace-datasource.service';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
 import { ObjectRecordCreateEvent } from 'src/engine/integrations/event-emitter/types/object-record-create.event';
-import { WorkspaceMemberObjectMetadata } from 'src/modules/workspace-member/standard-objects/workspace-member.object-metadata';
+import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
+import { WorkspaceEventEmitter } from 'src/engine/workspace-event-emitter/workspace-event-emitter';
+import { WorkspaceMemberWorkspaceEntity } from 'src/modules/workspace-member/standard-objects/workspace-member.workspace-entity';
 import { assert } from 'src/utils/assert';
 
 export class UserWorkspaceService extends TypeOrmQueryService<UserWorkspace> {
   constructor(
     @InjectRepository(UserWorkspace, 'core')
     private readonly userWorkspaceRepository: Repository<UserWorkspace>,
+    @InjectRepository(User, 'core')
+    private readonly userRepository: Repository<User>,
     private readonly dataSourceService: DataSourceService,
     private readonly typeORMService: TypeORMService,
-    private readonly workspaceDataSourceService: WorkspaceDataSourceService,
-    private eventEmitter: EventEmitter2,
+    private workspaceEventEmitter: WorkspaceEventEmitter,
   ) {
     super(userWorkspaceRepository);
   }
@@ -30,6 +32,12 @@ export class UserWorkspaceService extends TypeOrmQueryService<UserWorkspace> {
       userId,
       workspaceId,
     });
+
+    const payload = new ObjectRecordCreateEvent<UserWorkspace>();
+
+    payload.userId = userId;
+
+    this.workspaceEventEmitter.emit('user.signup', [payload], workspaceId);
 
     return this.userWorkspaceRepository.save(userWorkspace);
   }
@@ -46,9 +54,14 @@ export class UserWorkspaceService extends TypeOrmQueryService<UserWorkspace> {
     await workspaceDataSource?.query(
       `INSERT INTO ${dataSourceMetadata.schema}."workspaceMember"
         ("nameFirstName", "nameLastName", "colorScheme", "userId", "userEmail", "avatarUrl")
-        VALUES ('${user.firstName}', '${user.lastName}', 'Light', '${
-          user.id
-        }', '${user.email}', '${user.defaultAvatarUrl ?? ''}')`,
+        VALUES ($1, $2, 'Light', $3, $4, $5)`,
+      [
+        user.firstName,
+        user.lastName,
+        user.id,
+        user.email,
+        user.defaultAvatarUrl ?? '',
+      ],
     );
     const workspaceMember = await workspaceDataSource?.query(
       `SELECT * FROM ${dataSourceMetadata.schema}."workspaceMember" WHERE "userId"='${user.id}'`,
@@ -59,28 +72,43 @@ export class UserWorkspaceService extends TypeOrmQueryService<UserWorkspace> {
       `Error while creating workspace member ${user.email} on workspace ${workspaceId}`,
     );
     const payload =
-      new ObjectRecordCreateEvent<WorkspaceMemberObjectMetadata>();
+      new ObjectRecordCreateEvent<WorkspaceMemberWorkspaceEntity>();
 
-    payload.workspaceId = workspaceId;
-    payload.details = {
+    payload.properties = {
       after: workspaceMember[0],
     };
     payload.recordId = workspaceMember[0].id;
 
-    this.eventEmitter.emit('workspaceMember.created', payload);
+    this.workspaceEventEmitter.emit(
+      'workspaceMember.created',
+      [payload],
+      workspaceId,
+    );
   }
 
-  public async getWorkspaceMemberCount(workspaceId: string): Promise<number> {
-    const dataSourceSchema =
-      this.workspaceDataSourceService.getSchemaName(workspaceId);
+  async addUserToWorkspace(user: User, workspace: Workspace) {
+    const userWorkspaceExists = await this.checkUserWorkspaceExists(
+      user.id,
+      workspace.id,
+    );
 
-    return (
-      await this.workspaceDataSourceService.executeRawQuery(
-        `SELECT * FROM ${dataSourceSchema}."workspaceMember"`,
-        [],
-        workspaceId,
-      )
-    ).length;
+    if (!userWorkspaceExists) {
+      await this.create(user.id, workspace.id);
+
+      await this.createWorkspaceMember(workspace.id, user);
+    }
+
+    return await this.userRepository.save({
+      id: user.id,
+      defaultWorkspace: workspace,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  public async getUserCount(workspaceId): Promise<number | undefined> {
+    return await this.userWorkspaceRepository.countBy({
+      workspaceId,
+    });
   }
 
   async checkUserWorkspaceExists(

@@ -1,23 +1,36 @@
 import deepEqual from 'deep-equal';
 
+import { Record as IRecord } from 'src/engine/api/graphql/workspace-query-builder/interfaces/record.interface';
+import { ObjectMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/object-metadata.interface';
+
+import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+
 export const objectRecordChangedValues = (
-  oldRecord: Record<string, any>,
-  newRecord: Record<string, any>,
+  oldRecord: Partial<IRecord>,
+  newRecord: Partial<IRecord>,
+  updatedKeys: string[],
+  objectMetadata: ObjectMetadataInterface,
 ) => {
-  const isObject = (value: any) => {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  };
+  const fieldsByKey = new Map(
+    objectMetadata.fields.map((field) => [field.name, field]),
+  );
 
   const changedValues = Object.keys(newRecord).reduce(
     (acc, key) => {
-      // Discard if values are objects (e.g. we don't want Company.AccountOwner ; we have AccountOwnerId already)
-      if (isObject(oldRecord[key]) || isObject(newRecord[key])) {
+      const field = fieldsByKey.get(key);
+      const oldRecordValue = oldRecord[key];
+      const newRecordValue = newRecord[key];
+
+      if (
+        key === 'updatedAt' ||
+        !updatedKeys.includes(key) ||
+        field?.type === FieldMetadataType.RELATION ||
+        deepEqual(oldRecordValue, newRecordValue)
+      ) {
         return acc;
       }
 
-      if (!deepEqual(oldRecord[key], newRecord[key]) && key != 'updatedAt') {
-        acc[key] = { before: oldRecord[key], after: newRecord[key] };
-      }
+      acc[key] = { before: oldRecordValue, after: newRecordValue };
 
       return acc;
     },

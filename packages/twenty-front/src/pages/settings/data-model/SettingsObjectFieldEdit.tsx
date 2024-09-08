@@ -1,48 +1,51 @@
-import { useEffect, useMemo } from 'react';
+import { useApolloClient } from '@apollo/client';
+import { zodResolver } from '@hookform/resolvers/zod';
+import omit from 'lodash.omit';
+import pick from 'lodash.pick';
+import { useEffect } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
-import styled from '@emotion/styled';
-import { isNonEmptyString } from '@sniptt/guards';
+import { H2Title, IconArchive, IconHierarchy2 } from 'twenty-ui';
+import { z } from 'zod';
 
 import { useFieldMetadataItem } from '@/object-metadata/hooks/useFieldMetadataItem';
+import { useFilteredObjectMetadataItems } from '@/object-metadata/hooks/useFilteredObjectMetadataItems';
 import { useGetRelationMetadata } from '@/object-metadata/hooks/useGetRelationMetadata';
-import { useObjectMetadataItemForSettings } from '@/object-metadata/hooks/useObjectMetadataItemForSettings';
+import { useUpdateOneFieldMetadataItem } from '@/object-metadata/hooks/useUpdateOneFieldMetadataItem';
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { formatFieldMetadataItemInput } from '@/object-metadata/utils/formatFieldMetadataItemInput';
 import { getFieldSlug } from '@/object-metadata/utils/getFieldSlug';
 import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
+import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
+import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
 import { SaveAndCancelButtons } from '@/settings/components/SaveAndCancelButtons/SaveAndCancelButtons';
-import { SettingsHeaderContainer } from '@/settings/components/SettingsHeaderContainer';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { SettingsObjectFieldCurrencyFormValues } from '@/settings/data-model/components/SettingsObjectFieldCurrencyForm';
-import { SettingsObjectFieldFormSection } from '@/settings/data-model/components/SettingsObjectFieldFormSection';
+import { FIELD_NAME_MAXIMUM_LENGTH } from '@/settings/data-model/constants/FieldNameMaximumLength';
+import { SettingsDataModelFieldDescriptionForm } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldDescriptionForm';
+import { SettingsDataModelFieldIconLabelForm } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldIconLabelForm';
 import { SettingsDataModelFieldSettingsFormCard } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldSettingsFormCard';
-import { SettingsDataModelFieldTypeSelect } from '@/settings/data-model/fields/forms/components/SettingsDataModelFieldTypeSelect';
-import { useFieldMetadataForm } from '@/settings/data-model/fields/forms/hooks/useFieldMetadataForm';
-import { isFieldTypeSupportedInSettings } from '@/settings/data-model/utils/isFieldTypeSupportedInSettings';
+import { settingsFieldFormSchema } from '@/settings/data-model/fields/forms/validation-schemas/settingsFieldFormSchema';
 import { AppPath } from '@/types/AppPath';
-import { IconArchive, IconSettings } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { Button } from '@/ui/input/button/components/Button';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
 import { Section } from '@/ui/layout/section/components/Section';
 import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import {
-  FieldMetadataType,
-  RelationMetadataType,
-} from '~/generated-metadata/graphql';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { isDefined } from '~/utils/isDefined';
 
-const StyledSettingsObjectFieldTypeSelect = styled(
-  SettingsDataModelFieldTypeSelect,
-)`
-  margin-bottom: ${({ theme }) => theme.spacing(4)};
-`;
+type SettingsDataModelFieldEditFormValues = z.infer<
+  ReturnType<typeof settingsFieldFormSchema>
+>;
 
 const canPersistFieldMetadataItemUpdate = (
   fieldMetadataItem: FieldMetadataItem,
 ) => {
   return (
     fieldMetadataItem.isCustom ||
-    fieldMetadataItem.type === FieldMetadataType.Select
+    fieldMetadataItem.type === FieldMetadataType.Select ||
+    fieldMetadataItem.type === FieldMetadataType.MultiSelect
   );
 };
 
@@ -52,148 +55,105 @@ export const SettingsObjectFieldEdit = () => {
 
   const { objectSlug = '', fieldSlug = '' } = useParams();
   const { findActiveObjectMetadataItemBySlug } =
-    useObjectMetadataItemForSettings();
+    useFilteredObjectMetadataItems();
 
   const activeObjectMetadataItem =
     findActiveObjectMetadataItemBySlug(objectSlug);
 
-  const { disableMetadataField, editMetadataField } = useFieldMetadataItem();
+  const { deactivateMetadataField } = useFieldMetadataItem();
   const activeMetadataField = activeObjectMetadataItem?.fields.find(
     (metadataField) =>
       metadataField.isActive && getFieldSlug(metadataField) === fieldSlug,
   );
 
   const getRelationMetadata = useGetRelationMetadata();
-  const {
-    relationFieldMetadataItem,
-    relationObjectMetadataItem,
-    relationType,
-  } =
-    useMemo(
-      () =>
-        activeMetadataField
-          ? getRelationMetadata({
-              fieldMetadataItem: activeMetadataField,
-            })
-          : null,
-      [activeMetadataField, getRelationMetadata],
-    ) ?? {};
+  const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
 
-  const {
-    formValues,
-    handleFormChange,
-    hasFieldFormChanged,
-    hasFormChanged,
-    hasRelationFormChanged,
-    hasSelectFormChanged,
-    initForm,
-    isInitialized,
-    isValid,
-    validatedFormValues,
-  } = useFieldMetadataForm();
+  const apolloClient = useApolloClient();
+
+  const { findManyRecordsQuery } = useFindManyRecordsQuery({
+    objectNameSingular: activeObjectMetadataItem?.nameSingular || '',
+  });
+
+  const refetchRecords = async () => {
+    if (!activeObjectMetadataItem) return;
+    await apolloClient.query({
+      query: findManyRecordsQuery,
+      fetchPolicy: 'network-only',
+    });
+  };
+
+  const formConfig = useForm<SettingsDataModelFieldEditFormValues>({
+    mode: 'onTouched',
+    resolver: zodResolver(settingsFieldFormSchema()),
+  });
 
   useEffect(() => {
     if (!activeObjectMetadataItem || !activeMetadataField) {
       navigate(AppPath.NotFound);
-      return;
     }
+  }, [activeMetadataField, activeObjectMetadataItem, navigate]);
 
-    const { defaultValue } = activeMetadataField;
+  if (!activeObjectMetadataItem || !activeMetadataField) return null;
 
-    const currencyDefaultValue =
-      activeMetadataField.type === FieldMetadataType.Currency
-        ? (defaultValue as SettingsObjectFieldCurrencyFormValues | undefined)
-        : undefined;
-
-    const selectOptions = activeMetadataField.options?.map((option) => ({
-      ...option,
-      isDefault: defaultValue === `'${option.value}'`,
-    }));
-    selectOptions?.sort(
-      (optionA, optionB) => optionA.position - optionB.position,
-    );
-
-    const fieldType = activeMetadataField.type;
-    const isFieldTypeSupported = isFieldTypeSupportedInSettings(fieldType);
-
-    if (!isFieldTypeSupported) return;
-
-    initForm({
-      icon: activeMetadataField.icon ?? undefined,
-      label: activeMetadataField.label,
-      description: activeMetadataField.description ?? undefined,
-      type: fieldType,
-      ...(currencyDefaultValue ? { currency: currencyDefaultValue } : {}),
-      relation: {
-        field: {
-          icon: relationFieldMetadataItem?.icon,
-          label: relationFieldMetadataItem?.label || '',
-        },
-        objectMetadataId: relationObjectMetadataItem?.id || '',
-        type: relationType || RelationMetadataType.OneToMany,
-      },
-      ...(selectOptions?.length ? { select: selectOptions } : {}),
-    });
-  }, [
-    activeMetadataField,
-    activeObjectMetadataItem,
-    initForm,
-    navigate,
-    relationFieldMetadataItem?.icon,
-    relationFieldMetadataItem?.label,
-    relationObjectMetadataItem?.id,
-    relationType,
-  ]);
-
-  if (!isInitialized || !activeObjectMetadataItem || !activeMetadataField)
-    return null;
-
-  const canSave = isValid && hasFormChanged;
+  const { isDirty, isValid, isSubmitting } = formConfig.formState;
+  const canSave = isDirty && isValid && !isSubmitting;
 
   const isLabelIdentifier = isLabelIdentifierField({
     fieldMetadataItem: activeMetadataField,
     objectMetadataItem: activeObjectMetadataItem,
   });
 
-  const handleSave = async () => {
-    if (!validatedFormValues) return;
+  const handleSave = async (
+    formValues: SettingsDataModelFieldEditFormValues,
+  ) => {
+    const { dirtyFields } = formConfig.formState;
 
     try {
       if (
-        validatedFormValues.type === FieldMetadataType.Relation &&
-        isNonEmptyString(relationFieldMetadataItem?.id) &&
-        hasRelationFormChanged
+        formValues.type === FieldMetadataType.Relation &&
+        'relation' in formValues &&
+        'relation' in dirtyFields
       ) {
-        await editMetadataField({
-          icon: validatedFormValues.relation.field.icon,
-          id: relationFieldMetadataItem?.id,
-          label: validatedFormValues.relation.field.label,
-        });
+        const { relationFieldMetadataItem } =
+          getRelationMetadata({
+            fieldMetadataItem: activeMetadataField,
+          }) ?? {};
+
+        if (isDefined(relationFieldMetadataItem)) {
+          await updateOneFieldMetadataItem({
+            fieldMetadataIdToUpdate: relationFieldMetadataItem.id,
+            updatePayload: formValues.relation.field,
+          });
+        }
       }
 
-      if (hasFieldFormChanged || hasSelectFormChanged) {
-        await editMetadataField({
-          description: validatedFormValues.description,
-          icon: validatedFormValues.icon,
-          id: activeMetadataField.id,
-          label: validatedFormValues.label,
-          options:
-            validatedFormValues.type === FieldMetadataType.Select
-              ? validatedFormValues.select
-              : undefined,
+      const otherDirtyFields = omit(dirtyFields, 'relation');
+
+      if (Object.keys(otherDirtyFields).length > 0) {
+        const formattedInput = pick(
+          formatFieldMetadataItemInput(formValues),
+          Object.keys(otherDirtyFields),
+        );
+
+        await updateOneFieldMetadataItem({
+          fieldMetadataIdToUpdate: activeMetadataField.id,
+          updatePayload: formattedInput,
         });
       }
 
       navigate(`/settings/objects/${objectSlug}`);
+
+      refetchRecords();
     } catch (error) {
       enqueueSnackBar((error as Error).message, {
-        variant: 'error',
+        variant: SnackBarVariant.Error,
       });
     }
   };
 
-  const handleDisable = async () => {
-    await disableMetadataField(activeMetadataField);
+  const handleDeactivate = async () => {
+    await deactivateMetadataField(activeMetadataField);
     navigate(`/settings/objects/${objectSlug}`);
   };
 
@@ -201,75 +161,87 @@ export const SettingsObjectFieldEdit = () => {
     canPersistFieldMetadataItemUpdate(activeMetadataField);
 
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
-      <SettingsPageContainer>
-        <SettingsHeaderContainer>
-          <Breadcrumb
-            links={[
-              { children: 'Objects', href: '/settings/objects' },
-              {
-                children: activeObjectMetadataItem.labelPlural,
-                href: `/settings/objects/${objectSlug}`,
-              },
-              { children: activeMetadataField.label },
-            ]}
-          />
-          {shouldDisplaySaveAndCancel && (
-            <SaveAndCancelButtons
-              isSaveDisabled={!canSave}
-              onCancel={() => navigate(`/settings/objects/${objectSlug}`)}
-              onSave={handleSave}
+    <RecordFieldValueSelectorContextProvider>
+      {/* eslint-disable-next-line react/jsx-props-no-spreading */}
+      <FormProvider {...formConfig}>
+        <SubMenuTopBarContainer
+          Icon={IconHierarchy2}
+          title={
+            <Breadcrumb
+              links={[
+                {
+                  children: 'Objects',
+                  href: '/settings/objects',
+                  styles: { minWidth: 'max-content' },
+                },
+                {
+                  children: activeObjectMetadataItem.labelPlural,
+                  href: `/settings/objects/${objectSlug}`,
+                  styles: { maxWidth: '60%' },
+                },
+                { children: activeMetadataField.label },
+              ]}
             />
-          )}
-        </SettingsHeaderContainer>
-        <SettingsObjectFieldFormSection
-          disabled={!activeMetadataField.isCustom}
-          name={formValues.label}
-          description={formValues.description}
-          iconKey={formValues.icon}
-          onChange={handleFormChange}
-        />
-        <Section>
-          <H2Title
-            title="Type and values"
-            description="The field's type and values."
-          />
-          <StyledSettingsObjectFieldTypeSelect
-            disabled
-            onChange={handleFormChange}
-            value={formValues.type}
-          />
-          <SettingsDataModelFieldSettingsFormCard
-            disableCurrencyForm
-            fieldMetadataItem={{
-              icon: formValues.icon,
-              id: activeMetadataField.id,
-              label: formValues.label,
-              name: activeMetadataField.name,
-              type: formValues.type,
-            }}
-            objectMetadataItem={activeObjectMetadataItem}
-            onChange={handleFormChange}
-            relationFieldMetadataItem={relationFieldMetadataItem}
-            values={{
-              currency: formValues.currency,
-              relation: formValues.relation,
-              select: formValues.select,
-            }}
-          />
-        </Section>
-        {!isLabelIdentifier && (
-          <Section>
-            <H2Title title="Danger zone" description="Disable this field" />
-            <Button
-              Icon={IconArchive}
-              title="Disable"
-              size="small"
-              onClick={handleDisable}
-            />
-          </Section>
-        )}
-      </SettingsPageContainer>
-    </SubMenuTopBarContainer>
+          }
+          actionButton={
+            shouldDisplaySaveAndCancel && (
+              <SaveAndCancelButtons
+                isSaveDisabled={!canSave}
+                isCancelDisabled={isSubmitting}
+                onCancel={() => navigate(`/settings/objects/${objectSlug}`)}
+                onSave={formConfig.handleSubmit(handleSave)}
+              />
+            )
+          }
+        >
+          <SettingsPageContainer>
+            <Section>
+              <H2Title
+                title="Icon and Name"
+                description="The name and icon of this field"
+              />
+              <SettingsDataModelFieldIconLabelForm
+                disabled={!activeMetadataField.isCustom}
+                fieldMetadataItem={activeMetadataField}
+                maxLength={FIELD_NAME_MAXIMUM_LENGTH}
+              />
+            </Section>
+            <Section>
+              <H2Title title="Values" description="The values of this field" />
+              <SettingsDataModelFieldSettingsFormCard
+                disableCurrencyForm
+                fieldMetadataItem={activeMetadataField}
+                objectMetadataItem={activeObjectMetadataItem}
+              />
+            </Section>
+            <Section>
+              <H2Title
+                title="Description"
+                description="The description of this field"
+              />
+              <SettingsDataModelFieldDescriptionForm
+                disabled={!activeMetadataField.isCustom}
+                fieldMetadataItem={activeMetadataField}
+              />
+            </Section>
+            {!isLabelIdentifier && (
+              <Section>
+                <H2Title
+                  title="Danger zone"
+                  description="Deactivate this field"
+                />
+                <Button
+                  Icon={IconArchive}
+                  variant="secondary"
+                  title="Deactivate"
+                  size="small"
+                  onClick={handleDeactivate}
+                />
+              </Section>
+            )}
+          </SettingsPageContainer>
+        </SubMenuTopBarContainer>
+      </FormProvider>
+    </RecordFieldValueSelectorContextProvider>
   );
 };

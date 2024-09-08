@@ -1,6 +1,12 @@
+import { IconSettings } from 'twenty-ui';
+
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { RecordBoardColumnDefinition } from '@/object-record/record-board/types/RecordBoardColumnDefinition';
-import { IconPencil } from '@/ui/display/icon';
+import {
+  RecordBoardColumnDefinition,
+  RecordBoardColumnDefinitionNoValue,
+  RecordBoardColumnDefinitionType,
+  RecordBoardColumnDefinitionValue,
+} from '@/object-record/record-board/types/RecordBoardColumnDefinition';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export const computeRecordBoardColumnDefinitionsFromObjectMetadata = (
@@ -24,20 +30,42 @@ export const computeRecordBoardColumnDefinitionsFromObjectMetadata = (
     );
   }
 
-  return selectFieldMetadataItem.options.map((selectOption) => ({
-    id: selectOption.id,
-    title: selectOption.label,
-    value: selectOption.value,
-    color: selectOption.color,
-    position: selectOption.position,
-    actions: [
-      {
-        id: 'edit',
-        label: 'Edit from settings',
-        icon: IconPencil,
-        position: 0,
-        callback: navigateToSelectSettings,
-      },
-    ],
-  }));
+  const valueColumns = selectFieldMetadataItem.options.map(
+    (selectOption) =>
+      ({
+        id: selectOption.id,
+        type: RecordBoardColumnDefinitionType.Value,
+        title: selectOption.label,
+        value: selectOption.value,
+        color: selectOption.color,
+        position: selectOption.position,
+        actions: [
+          {
+            id: 'edit',
+            label: 'Edit from Settings',
+            icon: IconSettings,
+            position: 0,
+            callback: navigateToSelectSettings,
+          },
+        ],
+      }) satisfies RecordBoardColumnDefinitionValue,
+  );
+
+  const noValueColumn = {
+    id: 'no-value',
+    title: 'No Value',
+    type: RecordBoardColumnDefinitionType.NoValue,
+    value: null,
+    actions: [],
+    position:
+      selectFieldMetadataItem.options
+        .map((option) => option.position)
+        .reduce((a, b) => Math.max(a, b), 0) + 1,
+  } satisfies RecordBoardColumnDefinitionNoValue;
+
+  if (selectFieldMetadataItem.isNullable === true) {
+    return [...valueColumns, noValueColumn];
+  }
+
+  return valueColumns;
 };

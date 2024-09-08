@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { WorkspaceQueryBuilderOptions } from 'src/engine/api/graphql/workspace-query-builder/interfaces/workspace-query-builder-options.interface';
 import {
@@ -34,8 +34,6 @@ import { FindDuplicatesQueryFactory } from './factories/find-duplicates-query.fa
 
 @Injectable()
 export class WorkspaceQueryBuilderFactory {
-  private readonly logger = new Logger(WorkspaceQueryBuilderFactory.name);
-
   constructor(
     private readonly findManyQueryFactory: FindManyQueryFactory,
     private readonly findOneQueryFactory: FindOneQueryFactory,
@@ -64,37 +62,27 @@ export class WorkspaceQueryBuilderFactory {
     return this.findOneQueryFactory.create<Filter>(args, options);
   }
 
-  findDuplicates<Filter extends RecordFilter = RecordFilter>(
-    args: FindDuplicatesResolverArgs<Filter>,
+  findDuplicates(
+    args: FindDuplicatesResolverArgs,
     options: WorkspaceQueryBuilderOptions,
-    existingRecord?: Record<string, unknown>,
+    existingRecords?: IRecord[],
   ): Promise<string> {
-    return this.findDuplicatesQueryFactory.create<Filter>(
+    return this.findDuplicatesQueryFactory.create(
       args,
       options,
-      existingRecord,
-    );
-  }
-
-  findDuplicatesExistingRecord(
-    id: string,
-    options: WorkspaceQueryBuilderOptions,
-  ): string {
-    return this.findDuplicatesQueryFactory.buildQueryForExistingRecord(
-      id,
-      options,
+      existingRecords,
     );
   }
 
   createMany<Record extends IRecord = IRecord>(
-    args: CreateManyResolverArgs<Record>,
+    args: CreateManyResolverArgs<Partial<Record>>,
     options: WorkspaceQueryBuilderOptions,
   ): Promise<string> {
     return this.createManyQueryFactory.create<Record>(args, options);
   }
 
   updateOne<Record extends IRecord = IRecord>(
-    initialArgs: UpdateOneResolverArgs<Record>,
+    initialArgs: UpdateOneResolverArgs<Partial<Record>>,
     options: WorkspaceQueryBuilderOptions,
   ): Promise<string> {
     return this.updateOneQueryFactory.create<Record>(initialArgs, options);
@@ -111,7 +99,7 @@ export class WorkspaceQueryBuilderFactory {
     Record extends IRecord = IRecord,
     Filter extends RecordFilter = RecordFilter,
   >(
-    args: UpdateManyResolverArgs<Record, Filter>,
+    args: UpdateManyResolverArgs<Partial<Record>, Filter>,
     options: UpdateManyQueryFactoryOptions,
   ): Promise<string> {
     return this.updateManyQueryFactory.create(args, options);

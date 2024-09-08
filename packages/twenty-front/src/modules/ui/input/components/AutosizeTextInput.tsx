@@ -3,8 +3,8 @@ import { HotkeysEvent } from 'react-hotkeys-hook/dist/types';
 import TextareaAutosize from 'react-textarea-autosize';
 import styled from '@emotion/styled';
 import { Key } from 'ts-key-enum';
+import { IconArrowRight } from 'twenty-ui';
 
-import { IconArrowRight } from '@/ui/display/icon/index';
 import { Button } from '@/ui/input/button/components/Button';
 import { RoundedIconButton } from '@/ui/input/button/components/RoundedIconButton';
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
@@ -30,6 +30,8 @@ type AutosizeTextInputProps = {
   value?: string;
   className?: string;
   onBlur?: () => void;
+  autoFocus?: boolean;
+  disabled?: boolean;
 };
 
 const StyledContainer = styled.div`
@@ -123,6 +125,8 @@ export const AutosizeTextInput = ({
   value = '',
   className,
   onBlur,
+  autoFocus,
+  disabled,
 }: AutosizeTextInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const [isHidden, setIsHidden] = useState(
@@ -212,7 +216,9 @@ export const AutosizeTextInput = ({
           {!isHidden && (
             <StyledTextArea
               ref={textInputRef}
-              autoFocus={variant === AutosizeTextInputVariant.Button}
+              autoFocus={
+                autoFocus || variant === AutosizeTextInputVariant.Button
+              }
               placeholder={placeholder ?? 'Write a comment'}
               maxRows={MAX_ROWS}
               minRows={computedMinRows}
@@ -221,6 +227,7 @@ export const AutosizeTextInput = ({
               onFocus={handleFocus}
               onBlur={handleBlur}
               variant={variant}
+              disabled={disabled}
             />
           )}
           {variant === AutosizeTextInputVariant.Icon && (

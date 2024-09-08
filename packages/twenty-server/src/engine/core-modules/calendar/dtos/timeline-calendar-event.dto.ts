@@ -1,19 +1,16 @@
-import { ObjectType, ID, Field, registerEnumType } from '@nestjs/graphql';
+import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
 
-import { TimelineCalendarEventAttendee } from 'src/engine/core-modules/calendar/dtos/timeline-calendar-event-attendee.dto';
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { TimelineCalendarEventParticipant } from 'src/engine/core-modules/calendar/dtos/timeline-calendar-event-participant.dto';
+import { CalendarChannelVisibility } from 'src/modules/calendar/common/standard-objects/calendar-channel.workspace-entity';
 
-export enum TimelineCalendarEventVisibility {
-  METADATA = 'METADATA',
-  SHARE_EVERYTHING = 'SHARE_EVERYTHING',
-}
-
-registerEnumType(TimelineCalendarEventVisibility, {
-  name: 'TimelineCalendarEventVisibility',
-  description: 'Visibility of the calendar event',
+registerEnumType(CalendarChannelVisibility, {
+  name: 'CalendarChannelVisibility',
+  description: 'Visibility of the calendar channel',
 });
 
 @ObjectType('LinkMetadata')
-export class LinkMetadata {
+class LinkMetadata {
   @Field()
   label: string;
 
@@ -21,9 +18,21 @@ export class LinkMetadata {
   url: string;
 }
 
+@ObjectType('LinksMetadata')
+export class LinksMetadata {
+  @Field()
+  primaryLinkLabel: string;
+
+  @Field()
+  primaryLinkUrl: string;
+
+  @Field(() => [LinkMetadata], { nullable: true })
+  secondaryLinks: object | null;
+}
+
 @ObjectType('TimelineCalendarEvent')
 export class TimelineCalendarEvent {
-  @Field(() => ID)
+  @Field(() => UUIDScalarType)
   id: string;
 
   @Field()
@@ -50,12 +59,12 @@ export class TimelineCalendarEvent {
   @Field()
   conferenceSolution: string;
 
-  @Field(() => LinkMetadata)
-  conferenceLink: LinkMetadata;
+  @Field(() => LinksMetadata)
+  conferenceLink: LinksMetadata;
 
-  @Field(() => [TimelineCalendarEventAttendee])
-  attendees: TimelineCalendarEventAttendee[];
+  @Field(() => [TimelineCalendarEventParticipant])
+  participants: TimelineCalendarEventParticipant[];
 
-  @Field(() => TimelineCalendarEventVisibility)
-  visibility: TimelineCalendarEventVisibility;
+  @Field(() => CalendarChannelVisibility)
+  visibility: CalendarChannelVisibility;
 }

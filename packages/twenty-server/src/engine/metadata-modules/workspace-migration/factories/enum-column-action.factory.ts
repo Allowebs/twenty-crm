@@ -1,17 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { WorkspaceColumnActionOptions } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-options.interface';
 import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+import { WorkspaceColumnActionOptions } from 'src/engine/metadata-modules/workspace-migration/interfaces/workspace-column-action-options.interface';
 
 import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { computeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
+import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
+import { ColumnActionAbstractFactory } from 'src/engine/metadata-modules/workspace-migration/factories/column-action-abstract.factory';
+import { fieldMetadataTypeToColumnType } from 'src/engine/metadata-modules/workspace-migration/utils/field-metadata-type-to-column-type.util';
 import {
   WorkspaceMigrationColumnActionType,
   WorkspaceMigrationColumnAlter,
   WorkspaceMigrationColumnCreate,
 } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
-import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
-import { fieldMetadataTypeToColumnType } from 'src/engine/metadata-modules/workspace-migration/utils/field-metadata-type-to-column-type.util';
-import { ColumnActionAbstractFactory } from 'src/engine/metadata-modules/workspace-migration/factories/column-action-abstract.factory';
+import {
+  WorkspaceMigrationException,
+  WorkspaceMigrationExceptionCode,
+} from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 
 export type EnumFieldMetadataType =
   | FieldMetadataType.RATING
@@ -25,29 +30,34 @@ export class EnumColumnActionFactory extends ColumnActionAbstractFactory<EnumFie
   protected handleCreateAction(
     fieldMetadata: FieldMetadataInterface<EnumFieldMetadataType>,
     options: WorkspaceColumnActionOptions,
-  ): WorkspaceMigrationColumnCreate {
+  ): WorkspaceMigrationColumnCreate[] {
+    const columnName = computeColumnName(fieldMetadata);
     const defaultValue = fieldMetadata.defaultValue ?? options?.defaultValue;
     const serializedDefaultValue = serializeDefaultValue(defaultValue);
     const enumOptions = fieldMetadata.options
       ? [...fieldMetadata.options.map((option) => option.value)]
       : undefined;
 
-    return {
-      action: WorkspaceMigrationColumnActionType.CREATE,
-      columnName: fieldMetadata.targetColumnMap.value,
-      columnType: fieldMetadataTypeToColumnType(fieldMetadata.type),
-      enum: enumOptions,
-      isArray: fieldMetadata.type === FieldMetadataType.MULTI_SELECT,
-      isNullable: fieldMetadata.isNullable,
-      defaultValue: serializedDefaultValue,
-    };
+    return [
+      {
+        action: WorkspaceMigrationColumnActionType.CREATE,
+        columnName,
+        columnType: fieldMetadataTypeToColumnType(fieldMetadata.type),
+        enum: enumOptions,
+        isArray: fieldMetadata.type === FieldMetadataType.MULTI_SELECT,
+        isNullable: fieldMetadata.isNullable ?? true,
+        defaultValue: serializedDefaultValue,
+      },
+    ];
   }
 
   protected handleAlterAction(
     currentFieldMetadata: FieldMetadataInterface<EnumFieldMetadataType>,
     alteredFieldMetadata: FieldMetadataInterface<EnumFieldMetadataType>,
     options: WorkspaceColumnActionOptions,
-  ): WorkspaceMigrationColumnAlter {
+  ): WorkspaceMigrationColumnAlter[] {
+    const currentColumnName = computeColumnName(currentFieldMetadata);
+    const alteredColumnName = computeColumnName(alteredFieldMetadata);
     const defaultValue =
       alteredFieldMetadata.defaultValue ?? options?.defaultValue;
     const serializedDefaultValue = serializeDefaultValue(defaultValue);
@@ -71,38 +81,41 @@ export class EnumColumnActionFactory extends ColumnActionAbstractFactory<EnumFie
           }),
         ]
       : undefined;
-    const currentColumnName = currentFieldMetadata.targetColumnMap.value;
-    const alteredColumnName = alteredFieldMetadata.targetColumnMap.value;
 
     if (!currentColumnName || !alteredColumnName) {
       this.logger.error(
         `Column name not found for current or altered field metadata, can be due to a missing or an invalid target column map. Current column name: ${currentColumnName}, Altered column name: ${alteredColumnName}.`,
       );
-      throw new Error(
+      throw new WorkspaceMigrationException(
         `Column name not found for current or altered field metadata`,
+        WorkspaceMigrationExceptionCode.INVALID_FIELD_METADATA,
       );
     }
 
-    return {
-      action: WorkspaceMigrationColumnActionType.ALTER,
-      currentColumnDefinition: {
-        columnName: currentColumnName,
-        columnType: fieldMetadataTypeToColumnType(currentFieldMetadata.type),
-        enum: currentFieldMetadata.options
-          ? [...currentFieldMetadata.options.map((option) => option.value)]
-          : undefined,
-        isArray: currentFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
-        isNullable: currentFieldMetadata.isNullable,
-        defaultValue: serializeDefaultValue(currentFieldMetadata.defaultValue),
+    return [
+      {
+        action: WorkspaceMigrationColumnActionType.ALTER,
+        currentColumnDefinition: {
+          columnName: currentColumnName,
+          columnType: fieldMetadataTypeToColumnType(currentFieldMetadata.type),
+          enum: currentFieldMetadata.options
+            ? [...currentFieldMetadata.options.map((option) => option.value)]
+            : undefined,
+          isArray: currentFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
+          isNullable: currentFieldMetadata.isNullable ?? true,
+          defaultValue: serializeDefaultValue(
+            currentFieldMetadata.defaultValue,
+          ),
+        },
+        alteredColumnDefinition: {
+          columnName: alteredColumnName,
+          columnType: fieldMetadataTypeToColumnType(alteredFieldMetadata.type),
+          enum: enumOptions,
+          isArray: alteredFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
+          isNullable: alteredFieldMetadata.isNullable ?? true,
+          defaultValue: serializedDefaultValue,
+        },
       },
-      alteredColumnDefinition: {
-        columnName: alteredColumnName,
-        columnType: fieldMetadataTypeToColumnType(alteredFieldMetadata.type),
-        enum: enumOptions,
-        isArray: alteredFieldMetadata.type === FieldMetadataType.MULTI_SELECT,
-        isNullable: alteredFieldMetadata.isNullable,
-        defaultValue: serializedDefaultValue,
-      },
-    };
+    ];
   }
 }

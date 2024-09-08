@@ -1,33 +1,34 @@
 import { isNonEmptyString } from '@sniptt/guards';
 
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { OrderBy } from '@/object-metadata/types/OrderBy';
+import { useGetObjectOrderByField } from '@/object-metadata/hooks/useGetObjectOrderByField';
+import { useMapToObjectRecordIdentifier } from '@/object-metadata/hooks/useMapToObjectRecordIdentifier';
+
 import { DEFAULT_SEARCH_REQUEST_LIMIT } from '@/object-record/constants/DefaultSearchRequestLimit';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { SelectableRecord } from '@/object-record/select/types/SelectableRecord';
 import { getObjectFilterFields } from '@/object-record/select/utils/getObjectFilterFields';
 import { makeAndFilterVariables } from '@/object-record/utils/makeAndFilterVariables';
 import { makeOrFilterVariables } from '@/object-record/utils/makeOrFilterVariables';
+import { OrderBy } from '@/types/OrderBy';
 
 export const useRecordsForSelect = ({
   searchFilterText,
   sortOrder = 'AscNullsLast',
   selectedIds,
   limit,
-  excludeEntityIds = [],
+  excludeRecordIds = [],
   objectNameSingular,
 }: {
   searchFilterText: string;
   sortOrder?: OrderBy;
   selectedIds: string[];
   limit?: number;
-  excludeEntityIds?: string[];
+  excludeRecordIds?: string[];
   objectNameSingular: string;
 }) => {
-  const { mapToObjectRecordIdentifier, getObjectOrderByField } =
-    useObjectMetadataItem({
-      objectNameSingular,
-    });
+  const { mapToObjectRecordIdentifier } = useMapToObjectRecordIdentifier({
+    objectNameSingular,
+  });
 
   const filters = [
     {
@@ -35,6 +36,10 @@ export const useRecordsForSelect = ({
       filter: searchFilterText,
     },
   ];
+
+  const { getObjectOrderByField } = useGetObjectOrderByField({
+    objectNameSingular,
+  });
 
   const orderByField = getObjectOrderByField(sortOrder);
   const selectedIdsFilter = { id: { in: selectedIds } };
@@ -86,7 +91,7 @@ export const useRecordsForSelect = ({
     skip: !selectedIds.length,
   });
 
-  const notFilterIds = [...selectedIds, ...excludeEntityIds];
+  const notFilterIds = [...selectedIds, ...excludeRecordIds];
   const notFilter = notFilterIds.length
     ? { not: { id: { in: notFilterIds } } }
     : undefined;

@@ -1,11 +1,16 @@
-import React, { useContext, useState } from 'react';
 import styled from '@emotion/styled';
+import { useContext, useState } from 'react';
+import { IconDotsVertical, IconPlus, Tag } from 'twenty-ui';
 
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
 import { RecordBoardColumnDropdownMenu } from '@/object-record/record-board/record-board-column/components/RecordBoardColumnDropdownMenu';
 import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
+import { useAddNewCard } from '@/object-record/record-board/record-board-column/hooks/useAddNewCard';
+import { useAddNewOpportunity } from '@/object-record/record-board/record-board-column/hooks/useAddNewOpportunity';
 import { RecordBoardColumnHotkeyScope } from '@/object-record/record-board/types/BoardColumnHotkeyScope';
-import { IconDotsVertical } from '@/ui/display/icon';
-import { Tag } from '@/ui/display/tag/components/Tag';
+import { RecordBoardColumnDefinitionType } from '@/object-record/record-board/types/RecordBoardColumnDefinition';
+import { SingleEntitySelect } from '@/object-record/relation-picker/components/SingleEntitySelect';
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 
@@ -26,14 +31,11 @@ const StyledAmount = styled.div`
 
 const StyledNumChildren = styled.div`
   align-items: center;
-  background-color: ${({ theme }) => theme.background.tertiary};
-  border-radius: ${({ theme }) => theme.border.radius.rounded};
   color: ${({ theme }) => theme.font.color.tertiary};
   display: flex;
   height: 24px;
   justify-content: center;
   line-height: ${({ theme }) => theme.text.lineHeight.lg};
-  margin-left: auto;
   width: 16px;
 `;
 
@@ -41,11 +43,25 @@ const StyledHeaderActions = styled.div`
   display: flex;
   margin-left: auto;
 `;
+const StyledHeaderContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+`;
+const StyledLeftContainer = styled.div`
+  align-items: center;
+  display: flex;
+`;
+
+const StyledRightContainer = styled.div`
+  align-items: center;
+  display: flex;
+`;
 
 export const RecordBoardColumnHeader = () => {
   const [isBoardColumnMenuOpen, setIsBoardColumnMenuOpen] = useState(false);
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);
-
+  const { objectMetadataItem } = useContext(RecordBoardContext);
   const { columnDefinition, recordCount } = useContext(
     RecordBoardColumnContext,
   );
@@ -72,35 +88,90 @@ export const RecordBoardColumnHeader = () => {
 
   const boardColumnTotal = 0;
 
+  const {
+    isCreatingCard,
+    handleAddNewOpportunityClick,
+    handleCancel,
+    handleEntitySelect,
+  } = useAddNewOpportunity('first');
+  const { handleAddNewCardClick } = useAddNewCard('first');
+
+  const isOpportunity =
+    objectMetadataItem.nameSingular === CoreObjectNameSingular.Opportunity;
+
+  const handleClick = isOpportunity
+    ? handleAddNewOpportunityClick
+    : () => {
+        handleAddNewCardClick();
+      };
+
   return (
     <>
       <StyledHeader
         onMouseEnter={() => setIsHeaderHovered(true)}
         onMouseLeave={() => setIsHeaderHovered(false)}
       >
-        <Tag
-          onClick={handleBoardColumnMenuOpen}
-          color={columnDefinition.color}
-          text={columnDefinition.title}
-        />
-        {!!boardColumnTotal && <StyledAmount>${boardColumnTotal}</StyledAmount>}
-        {!isHeaderHovered && (
-          <StyledNumChildren>{recordCount}</StyledNumChildren>
-        )}
-        {isHeaderHovered && (
-          <StyledHeaderActions>
-            <LightIconButton
-              accent="tertiary"
-              Icon={IconDotsVertical}
+        <StyledHeaderContainer>
+          <StyledLeftContainer>
+            <Tag
               onClick={handleBoardColumnMenuOpen}
+              variant={
+                columnDefinition.type === RecordBoardColumnDefinitionType.Value
+                  ? 'solid'
+                  : 'outline'
+              }
+              color={
+                columnDefinition.type === RecordBoardColumnDefinitionType.Value
+                  ? columnDefinition.color
+                  : 'transparent'
+              }
+              text={columnDefinition.title}
+              weight={
+                columnDefinition.type === RecordBoardColumnDefinitionType.Value
+                  ? 'regular'
+                  : 'medium'
+              }
             />
-          </StyledHeaderActions>
-        )}
+            {!!boardColumnTotal && (
+              <StyledAmount>${boardColumnTotal}</StyledAmount>
+            )}
+            <StyledNumChildren>{recordCount}</StyledNumChildren>
+          </StyledLeftContainer>
+          <StyledRightContainer>
+            {isHeaderHovered && (
+              <StyledHeaderActions>
+                {columnDefinition.actions.length > 0 && (
+                  <LightIconButton
+                    accent="tertiary"
+                    Icon={IconDotsVertical}
+                    onClick={handleBoardColumnMenuOpen}
+                  />
+                )}
+
+                <LightIconButton
+                  accent="tertiary"
+                  Icon={IconPlus}
+                  onClick={handleClick}
+                />
+              </StyledHeaderActions>
+            )}
+          </StyledRightContainer>
+        </StyledHeaderContainer>
       </StyledHeader>
-      {isBoardColumnMenuOpen && (
+      {isBoardColumnMenuOpen && columnDefinition.actions.length > 0 && (
         <RecordBoardColumnDropdownMenu
           onClose={handleBoardColumnMenuClose}
           stageId={columnDefinition.id}
+        />
+      )}
+      {isCreatingCard && (
+        <SingleEntitySelect
+          disableBackgroundBlur
+          onCancel={handleCancel}
+          onEntitySelected={handleEntitySelect}
+          relationObjectNameSingular={CoreObjectNameSingular.Company}
+          relationPickerScopeId="relation-picker"
+          selectedRelationRecordIds={[]}
         />
       )}
     </>

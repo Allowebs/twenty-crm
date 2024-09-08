@@ -1,14 +1,15 @@
-import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { useRecoilValue } from 'recoil';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState.ts';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { turnSortsIntoOrderBy } from '@/object-record/object-sort-dropdown/utils/turnSortsIntoOrderBy';
 import { turnObjectDropdownFilterIntoQueryFilter } from '@/object-record/record-filter/utils/turnObjectDropdownFilterIntoQueryFilter';
+import { useRecordTableRecordGqlFields } from '@/object-record/record-index/hooks/useRecordTableRecordGqlFields';
 import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
 import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
 import { SIGN_IN_BACKGROUND_MOCK_COMPANIES } from '@/sign-in-background-mock/constants/SignInBackgroundMockCompanies';
-
-import { useFindManyRecords } from '../../hooks/useFindManyRecords';
+import { WorkspaceActivationStatus } from '~/generated/graphql';
 
 export const useFindManyParams = (
   objectNameSingular: string,
@@ -29,21 +30,22 @@ export const useFindManyParams = (
     objectMetadataItem?.fields ?? [],
   );
 
-  const orderBy = turnSortsIntoOrderBy(
-    tableSorts,
-    objectMetadataItem?.fields ?? [],
-  );
+  const orderBy = turnSortsIntoOrderBy(objectMetadataItem, tableSorts);
 
   return { objectNameSingular, filter, orderBy };
 };
 
 export const useLoadRecordIndexTable = (objectNameSingular: string) => {
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular,
+  });
+
   const { setRecordTableData, setIsRecordTableInitialLoading } =
     useRecordTable();
-  const { tableLastRowVisibleState } = useRecordTableStates();
-  const setLastRowVisible = useSetRecoilState(tableLastRowVisibleState);
   const currentWorkspace = useRecoilValue(currentWorkspaceState);
   const params = useFindManyParams(objectNameSingular);
+
+  const recordGqlFields = useRecordTableRecordGqlFields({ objectMetadataItem });
 
   const {
     records,
@@ -51,23 +53,28 @@ export const useLoadRecordIndexTable = (objectNameSingular: string) => {
     totalCount,
     fetchMoreRecords,
     queryStateIdentifier,
+    hasNextPage,
   } = useFindManyRecords({
     ...params,
+    recordGqlFields,
     onCompleted: () => {
-      setLastRowVisible(false);
+      setIsRecordTableInitialLoading(false);
+    },
+    onError: () => {
       setIsRecordTableInitialLoading(false);
     },
   });
 
   return {
     records:
-      currentWorkspace?.activationStatus === 'active'
+      currentWorkspace?.activationStatus === WorkspaceActivationStatus.Active
         ? records
         : SIGN_IN_BACKGROUND_MOCK_COMPANIES,
-    totalCount: totalCount || 0,
+    totalCount: totalCount,
     loading,
     fetchMoreRecords,
     queryStateIdentifier,
     setRecordTableData,
+    hasNextPage,
   };
 };

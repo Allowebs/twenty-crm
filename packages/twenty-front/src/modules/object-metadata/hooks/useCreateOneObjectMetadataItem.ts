@@ -1,8 +1,8 @@
 import { ApolloClient, useApolloClient, useMutation } from '@apollo/client';
 import { getOperationName } from '@apollo/client/utilities';
 
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
 import {
   CreateObjectInput,
   CreateOneObjectMetadataItemMutation,
@@ -17,7 +17,8 @@ import { useApolloMetadataClient } from './useApolloMetadataClient';
 export const useCreateOneObjectMetadataItem = () => {
   const apolloMetadataClient = useApolloMetadataClient();
   const apolloClient = useApolloClient();
-  const { findManyRecordsQuery } = useObjectMetadataItem({
+
+  const { findManyRecordsQuery } = useFindManyRecordsQuery({
     objectNameSingular: CoreObjectNameSingular.View,
   });
 
@@ -37,15 +38,18 @@ export const useCreateOneObjectMetadataItem = () => {
       refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
     });
 
+    return createdObjectMetadata;
+  };
+
+  const findManyRecordsCache = async () => {
     await apolloClient.query({
       query: findManyRecordsQuery,
       fetchPolicy: 'network-only',
     });
-
-    return createdObjectMetadata;
   };
 
   return {
     createOneObjectMetadataItem,
+    findManyRecordsCache,
   };
 };

@@ -1,9 +1,10 @@
 import { Meta, StoryObj } from '@storybook/react';
-
-import { IconSearch } from '@/ui/display/icon';
-import { CatalogDecorator } from '~/testing/decorators/CatalogDecorator';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
-import { CatalogStory } from '~/testing/types';
+import {
+  CatalogDecorator,
+  CatalogStory,
+  ComponentDecorator,
+  IconSearch,
+} from 'twenty-ui';
 
 import {
   Button,
@@ -29,6 +30,7 @@ export const Default: Story = {
     title: 'Button',
     size: 'small',
     variant: 'primary',
+    inverted: false,
     accent: 'danger',
     disabled: false,
     focus: false,

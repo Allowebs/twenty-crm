@@ -3,7 +3,9 @@ import { useRecoilValue } from 'recoil';
 import { ObjectFilterDropdownSearchInput } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownSearchInput';
 import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
+import { ViewFilterOperand } from '@/views/types/ViewFilterOperand';
 
+import { ObjectFilterDropdownRatingInput } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownRatingInput';
 import { MultipleFiltersDropdownFilterOnFilterChangedEffect } from './MultipleFiltersDropdownFilterOnFilterChangedEffect';
 import { ObjectFilterDropdownDateInput } from './ObjectFilterDropdownDateInput';
 import { ObjectFilterDropdownFilterSelect } from './ObjectFilterDropdownFilterSelect';
@@ -36,6 +38,11 @@ export const MultipleFiltersDropdownContent = ({
   const selectedOperandInDropdown = useRecoilValue(
     selectedOperandInDropdownState,
   );
+  const isEmptyOperand =
+    selectedOperandInDropdown &&
+    [ViewFilterOperand.IsEmpty, ViewFilterOperand.IsNotEmpty].includes(
+      selectedOperandInDropdown,
+    );
 
   return (
     <>
@@ -43,20 +50,35 @@ export const MultipleFiltersDropdownContent = ({
         <ObjectFilterDropdownFilterSelect />
       ) : isObjectFilterDropdownOperandSelectUnfolded ? (
         <ObjectFilterDropdownOperandSelect />
+      ) : isEmptyOperand ? (
+        <ObjectFilterDropdownOperandButton />
       ) : (
         selectedOperandInDropdown && (
           <>
             <ObjectFilterDropdownOperandButton />
             <DropdownMenuSeparator />
-            {['TEXT', 'EMAIL', 'PHONE', 'FULL_NAME', 'LINK'].includes(
-              filterDefinitionUsedInDropdown.type,
-            ) && <ObjectFilterDropdownTextSearchInput />}
+            {[
+              'TEXT',
+              'EMAIL',
+              'EMAILS',
+              'PHONE',
+              'FULL_NAME',
+              'LINK',
+              'LINKS',
+              'ADDRESS',
+              'ACTOR',
+            ].includes(filterDefinitionUsedInDropdown.type) && (
+              <ObjectFilterDropdownTextSearchInput />
+            )}
             {['NUMBER', 'CURRENCY'].includes(
               filterDefinitionUsedInDropdown.type,
             ) && <ObjectFilterDropdownNumberInput />}
-            {filterDefinitionUsedInDropdown.type === 'DATE_TIME' && (
-              <ObjectFilterDropdownDateInput />
+            {filterDefinitionUsedInDropdown.type === 'RATING' && (
+              <ObjectFilterDropdownRatingInput />
             )}
+            {['DATE_TIME', 'DATE'].includes(
+              filterDefinitionUsedInDropdown.type,
+            ) && <ObjectFilterDropdownDateInput />}
             {filterDefinitionUsedInDropdown.type === 'RELATION' && (
               <>
                 <ObjectFilterDropdownSearchInput />

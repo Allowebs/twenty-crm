@@ -1,8 +1,7 @@
 import { MouseEvent } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { IconComponent } from 'twenty-ui';
 
 export type LightButtonAccent = 'secondary' | 'tertiary';
 
@@ -96,7 +95,7 @@ export const LightButton = ({
       className={className}
       active={active}
     >
-      {!!Icon && <Icon size={theme.icon.size.sm} />}
+      {!!Icon && <Icon size={theme.icon.size.md} />}
       {title}
     </StyledButton>
   );

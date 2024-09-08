@@ -1,38 +1,32 @@
-import { Field, ID, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType } from '@nestjs/graphql';
 
+import { IDField } from '@ptc-org/nestjs-query-graphql';
 import {
-  Entity,
-  Unique,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   ManyToOne,
+  PrimaryGeneratedColumn,
+  Relation,
+  Unique,
+  UpdateDateColumn,
 } from 'typeorm';
-import { IDField } from '@ptc-org/nestjs-query-graphql';
 
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
 import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-
-export enum FeatureFlagKeys {
-  IsBlocklistEnabled = 'IS_BLOCKLIST_ENABLED',
-  IsCalendarEnabled = 'IS_CALENDAR_ENABLED',
-  IsEventObjectEnabled = 'IS_EVENT_OBJECT_ENABLED',
-  IsAirtableIntegrationEnabled = 'IS_AIRTABLE_INTEGRATION_ENABLED',
-  IsPostgreSQLIntegrationEnabled = 'IS_POSTGRESQL_INTEGRATION_ENABLED',
-  IsFullSyncV2Enabled = 'IS_FULL_SYNC_V2_ENABLED',
-}
 
 @Entity({ name: 'featureFlag', schema: 'core' })
 @ObjectType('FeatureFlag')
 @Unique('IndexOnKeyAndWorkspaceIdUnique', ['key', 'workspaceId'])
 export class FeatureFlagEntity {
-  @IDField(() => ID)
+  @IDField(() => UUIDScalarType)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Field()
+  @Field(() => String)
   @Column({ nullable: false, type: 'text' })
-  key: FeatureFlagKeys;
+  key: FeatureFlagKey;
 
   @Field()
   @Column({ nullable: false, type: 'uuid' })
@@ -41,15 +35,15 @@ export class FeatureFlagEntity {
   @ManyToOne(() => Workspace, (workspace) => workspace.featureFlags, {
     onDelete: 'CASCADE',
   })
-  workspace: Workspace;
+  workspace: Relation<Workspace>;
 
   @Field()
   @Column({ nullable: false })
   value: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

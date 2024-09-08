@@ -1,63 +1,105 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  UseFilters,
+  UseGuards,
+} from '@nestjs/common';
 
 import { Response } from 'express';
 
-import { GoogleAPIsProviderEnabledGuard } from 'src/engine/core-modules/auth/guards/google-apis-provider-enabled.guard';
-import { GoogleAPIsOauthGuard } from 'src/engine/core-modules/auth/guards/google-apis-oauth.guard';
-import { GoogleAPIsRequest } from 'src/engine/core-modules/auth/strategies/google-apis.auth.strategy';
+import {
+  AuthException,
+  AuthExceptionCode,
+} from 'src/engine/core-modules/auth/auth.exception';
+import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-rest-api-exception.filter';
+import { GoogleAPIsOauthExchangeCodeForTokenGuard } from 'src/engine/core-modules/auth/guards/google-apis-oauth-exchange-code-for-token.guard';
+import { GoogleAPIsOauthRequestCodeGuard } from 'src/engine/core-modules/auth/guards/google-apis-oauth-request-code.guard';
 import { GoogleAPIsService } from 'src/engine/core-modules/auth/services/google-apis.service';
 import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
+import { GoogleAPIsRequest } from 'src/engine/core-modules/auth/types/google-api-request.type';
+import { OnboardingService } from 'src/engine/core-modules/onboarding/onboarding.service';
 import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
 
 @Controller('auth/google-apis')
+@UseFilters(AuthRestApiExceptionFilter)
 export class GoogleAPIsAuthController {
   constructor(
     private readonly googleAPIsService: GoogleAPIsService,
     private readonly tokenService: TokenService,
     private readonly environmentService: EnvironmentService,
+    private readonly onboardingService: OnboardingService,
   ) {}
 
   @Get()
-  @UseGuards(GoogleAPIsProviderEnabledGuard, GoogleAPIsOauthGuard)
+  @UseGuards(GoogleAPIsOauthRequestCodeGuard)
   async googleAuth() {
     // As this method is protected by Google Auth guard, it will trigger Google SSO flow
     return;
   }
 
   @Get('get-access-token')
-  @UseGuards(GoogleAPIsProviderEnabledGuard, GoogleAPIsOauthGuard)
+  @UseGuards(GoogleAPIsOauthExchangeCodeForTokenGuard)
   async googleAuthGetAccessToken(
     @Req() req: GoogleAPIsRequest,
     @Res() res: Response,
   ) {
     const { user } = req;
 
-    const { email, accessToken, refreshToken, transientToken } = user;
+    const {
+      emails,
+      accessToken,
+      refreshToken,
+      transientToken,
+      redirectLocation,
+      calendarVisibility,
+      messageVisibility,
+    } = user;
 
-    const { workspaceMemberId, workspaceId } =
+    const { workspaceMemberId, userId, workspaceId } =
       await this.tokenService.verifyTransientToken(transientToken);
 
     const demoWorkspaceIds = this.environmentService.get('DEMO_WORKSPACE_IDS');
 
     if (demoWorkspaceIds.includes(workspaceId)) {
-      throw new Error('Cannot connect Google account to demo workspace');
+      throw new AuthException(
+        'Cannot connect Google account to demo workspace',
+        AuthExceptionCode.FORBIDDEN_EXCEPTION,
+      );
     }
 
     if (!workspaceId) {
-      throw new Error('Workspace not found');
+      throw new AuthException(
+        'Workspace not found',
+        AuthExceptionCode.WORKSPACE_NOT_FOUND,
+      );
     }
 
-    await this.googleAPIsService.saveConnectedAccount({
-      handle: email,
+    const handle = emails[0].value;
+
+    await this.googleAPIsService.refreshGoogleRefreshToken({
+      handle,
       workspaceMemberId: workspaceMemberId,
       workspaceId: workspaceId,
-      provider: 'google',
       accessToken,
       refreshToken,
+      calendarVisibility,
+      messageVisibility,
     });
 
+    if (userId) {
+      await this.onboardingService.setOnboardingConnectAccountPending({
+        userId,
+        workspaceId,
+        value: false,
+      });
+    }
+
     return res.redirect(
-      `${this.environmentService.get('FRONT_BASE_URL')}/settings/accounts`,
+      `${this.environmentService.get('FRONT_BASE_URL')}${
+        redirectLocation || '/settings/accounts'
+      }`,
     );
   }
 }

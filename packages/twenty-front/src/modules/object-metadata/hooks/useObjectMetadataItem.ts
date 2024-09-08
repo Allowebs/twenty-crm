@@ -1,49 +1,21 @@
-import { gql } from '@apollo/client';
 import { useRecoilValue } from 'recoil';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState.ts';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { ObjectMetadataItemNotFoundError } from '@/object-metadata/errors/ObjectMetadataNotFoundError';
-import { useGetObjectOrderByField } from '@/object-metadata/hooks/useGetObjectOrderByField';
-import { useMapToObjectRecordIdentifier } from '@/object-metadata/hooks/useMapToObjectRecordIdentifier';
 import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objectMetadataItemFamilySelector';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { getBasePathToShowPage } from '@/object-metadata/utils/getBasePathToShowPage';
-import { getLabelIdentifierFieldMetadataItem } from '@/object-metadata/utils/getLabelIdentifierFieldMetadataItem';
 import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { useGetRecordFromCache } from '@/object-record/cache/hooks/useGetRecordFromCache';
-import { useModifyRecordFromCache } from '@/object-record/cache/hooks/useModifyRecordFromCache';
-import { useGenerateCreateManyRecordMutation } from '@/object-record/hooks/useGenerateCreateManyRecordMutation';
-import { useGenerateCreateOneRecordMutation } from '@/object-record/hooks/useGenerateCreateOneRecordMutation';
-import { useGenerateDeleteManyRecordMutation } from '@/object-record/hooks/useGenerateDeleteManyRecordMutation';
-import { useGenerateExecuteQuickActionOnOneRecordMutation } from '@/object-record/hooks/useGenerateExecuteQuickActionOnOneRecordMutation';
-import { useGenerateFindDuplicateRecordsQuery } from '@/object-record/hooks/useGenerateFindDuplicateRecordsQuery';
-import { useGenerateFindManyRecordsQuery } from '@/object-record/hooks/useGenerateFindManyRecordsQuery';
-import { useGenerateFindOneRecordQuery } from '@/object-record/hooks/useGenerateFindOneRecordQuery';
-import { useGenerateUpdateOneRecordMutation } from '@/object-record/hooks/useGenerateUpdateOneRecordMutation';
-import { generateDeleteOneRecordMutation } from '@/object-record/utils/generateDeleteOneRecordMutation';
 import { isDefined } from '~/utils/isDefined';
 
+import { WorkspaceActivationStatus } from '~/generated/graphql';
 import { ObjectMetadataItemIdentifier } from '../types/ObjectMetadataItemIdentifier';
 
-export const EMPTY_QUERY = gql`
-  query EmptyQuery {
-    empty
-  }
-`;
-
-export const EMPTY_MUTATION = gql`
-  mutation EmptyMutation {
-    empty
-  }
-`;
-
-export const useObjectMetadataItem = (
-  { objectNameSingular }: ObjectMetadataItemIdentifier,
-  depth?: number,
-  eagerLoadedRelations?: Record<string, any>,
-) => {
+export const useObjectMetadataItem = ({
+  objectNameSingular,
+}: ObjectMetadataItemIdentifier) => {
   const currentWorkspace = useRecoilValue(currentWorkspaceState);
 
+  // Todo: deprecate this logic as mocked objectMetadataItems are laod in ObjectMetadataItemsLoadEffect anyway
   const mockObjectMetadataItems = getObjectMetadataItemsMock();
 
   let objectMetadataItem = useRecoilValue(
@@ -55,7 +27,7 @@ export const useObjectMetadataItem = (
 
   let objectMetadataItems = useRecoilValue(objectMetadataItemsState);
 
-  if (currentWorkspace?.activationStatus !== 'active') {
+  if (currentWorkspace?.activationStatus !== WorkspaceActivationStatus.Active) {
     objectMetadataItem =
       mockObjectMetadataItems.find(
         (objectMetadataItem) =>
@@ -71,90 +43,7 @@ export const useObjectMetadataItem = (
     );
   }
 
-  const mapToObjectRecordIdentifier = useMapToObjectRecordIdentifier({
-    objectMetadataItem,
-  });
-
-  const getObjectOrderByField = useGetObjectOrderByField({
-    objectMetadataItem,
-  });
-
-  const getRecordFromCache = useGetRecordFromCache({
-    objectMetadataItem,
-  });
-
-  const modifyRecordFromCache = useModifyRecordFromCache({
-    objectMetadataItem,
-  });
-
-  const generateFindManyRecordsQuery = useGenerateFindManyRecordsQuery();
-  const findManyRecordsQuery = generateFindManyRecordsQuery({
-    objectMetadataItem,
-    depth,
-    eagerLoadedRelations,
-  });
-
-  const generateFindDuplicateRecordsQuery =
-    useGenerateFindDuplicateRecordsQuery();
-  const findDuplicateRecordsQuery = generateFindDuplicateRecordsQuery({
-    objectMetadataItem,
-    depth,
-  });
-
-  const generateFindOneRecordQuery = useGenerateFindOneRecordQuery();
-  const findOneRecordQuery = generateFindOneRecordQuery({
-    objectMetadataItem,
-    depth,
-  });
-
-  const createOneRecordMutation = useGenerateCreateOneRecordMutation({
-    objectMetadataItem,
-  });
-
-  const createManyRecordsMutation = useGenerateCreateManyRecordMutation({
-    objectMetadataItem,
-  });
-
-  const updateOneRecordMutation = useGenerateUpdateOneRecordMutation({
-    objectMetadataItem,
-  });
-
-  const deleteOneRecordMutation = generateDeleteOneRecordMutation({
-    objectMetadataItem,
-  });
-
-  const deleteManyRecordsMutation = useGenerateDeleteManyRecordMutation({
-    objectMetadataItem,
-  });
-
-  const executeQuickActionOnOneRecordMutation =
-    useGenerateExecuteQuickActionOnOneRecordMutation({
-      objectMetadataItem,
-    });
-
-  const labelIdentifierFieldMetadata =
-    getLabelIdentifierFieldMetadataItem(objectMetadataItem);
-
-  const basePathToShowPage = getBasePathToShowPage({
-    objectMetadataItem,
-  });
-
   return {
-    labelIdentifierFieldMetadata,
-    basePathToShowPage,
     objectMetadataItem,
-    getRecordFromCache,
-    modifyRecordFromCache,
-    findManyRecordsQuery,
-    findDuplicateRecordsQuery,
-    findOneRecordQuery,
-    createOneRecordMutation,
-    updateOneRecordMutation,
-    deleteOneRecordMutation,
-    executeQuickActionOnOneRecordMutation,
-    createManyRecordsMutation,
-    deleteManyRecordsMutation,
-    mapToObjectRecordIdentifier,
-    getObjectOrderByField,
   };
 };

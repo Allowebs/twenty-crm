@@ -4,7 +4,8 @@ import {
   IconEye,
   IconPencil,
   IconTextSize,
-} from '@/ui/display/icon';
+} from 'twenty-ui';
+
 import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
@@ -50,7 +51,11 @@ export const SettingsObjectFieldActiveActionDropdown = ({
     <Dropdown
       dropdownId={dropdownId}
       clickableComponent={
-        <LightIconButton Icon={IconDotsVertical} accent="tertiary" />
+        <LightIconButton
+          aria-label="Active Field Options"
+          Icon={IconDotsVertical}
+          accent="tertiary"
+        />
       }
       dropdownComponents={
         <DropdownMenu width="160px">

@@ -1,11 +1,18 @@
-import { formatToHumanReadableDate } from '~/utils';
-
+import { formatDateISOStringToDate } from '@/localization/utils/formatDateISOStringToDate';
+import { UserContext } from '@/users/contexts/UserContext';
+import { useContext } from 'react';
 import { EllipsisDisplay } from './EllipsisDisplay';
 
 type DateDisplayProps = {
-  value: Date | string | null | undefined;
+  value: string | null | undefined;
 };
 
-export const DateDisplay = ({ value }: DateDisplayProps) => (
-  <EllipsisDisplay>{value && formatToHumanReadableDate(value)}</EllipsisDisplay>
-);
+export const DateDisplay = ({ value }: DateDisplayProps) => {
+  const { dateFormat, timeZone } = useContext(UserContext);
+
+  const formattedDate = value
+    ? formatDateISOStringToDate(value, timeZone, dateFormat)
+    : '';
+
+  return <EllipsisDisplay>{formattedDate}</EllipsisDisplay>;
+};

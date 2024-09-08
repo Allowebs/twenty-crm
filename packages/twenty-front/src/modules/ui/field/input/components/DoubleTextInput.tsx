@@ -1,3 +1,4 @@
+import styled from '@emotion/styled';
 import {
   ChangeEvent,
   ClipboardEvent,
@@ -5,7 +6,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import styled from '@emotion/styled';
 import { Key } from 'ts-key-enum';
 
 import { FieldDoubleText } from '@/object-record/record-field/types/FieldDoubleText';
@@ -13,7 +13,7 @@ import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
 import { isDefined } from '~/utils/isDefined';
 
-import { StyledInput } from './TextInput';
+import { StyledTextInput } from './TextInput';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -21,7 +21,7 @@ const StyledContainer = styled.div`
   justify-content: space-between;
 
   input {
-    width: ${({ theme }) => theme.spacing(24)};
+    width: 100%;
   }
 
   & > input:last-child {
@@ -172,9 +172,16 @@ export const DoubleTextInput = ({
     onPaste?.({ firstValue: splittedName[0], secondValue: splittedName[1] });
   };
 
+  const handleClickToPreventParentClickEvents = (
+    event: React.MouseEvent<HTMLInputElement>,
+  ) => {
+    event.stopPropagation();
+    event.preventDefault();
+  };
+
   return (
     <StyledContainer ref={containerRef}>
-      <StyledInput
+      <StyledTextInput
         autoComplete="off"
         autoFocus
         onFocus={() => setFocusPosition('left')}
@@ -187,8 +194,9 @@ export const DoubleTextInput = ({
         onPaste={(event: ClipboardEvent<HTMLInputElement>) =>
           handleOnPaste(event)
         }
+        onClick={handleClickToPreventParentClickEvents}
       />
-      <StyledInput
+      <StyledTextInput
         autoComplete="off"
         onFocus={() => setFocusPosition('right')}
         ref={secondValueInputRef}
@@ -197,6 +205,7 @@ export const DoubleTextInput = ({
         onChange={(event: ChangeEvent<HTMLInputElement>) => {
           handleChange(firstInternalValue, event.target.value);
         }}
+        onClick={handleClickToPreventParentClickEvents}
       />
     </StyledContainer>
   );

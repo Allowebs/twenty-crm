@@ -31,7 +31,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,
@@ -39,7 +41,7 @@ describe('CompanyResolver (e2e)', () => {
         data: {
           name: 'New Company',
           domainName: 'new-company.com',
-          address: 'New Address',
+          address: { addressCity: 'Paris' },
         },
       },
     };
@@ -57,7 +59,7 @@ describe('CompanyResolver (e2e)', () => {
         expect(data).toHaveProperty('id');
         expect(data).toHaveProperty('name', 'New Company');
         expect(data).toHaveProperty('domainName', 'new-company.com');
-        expect(data).toHaveProperty('address', 'New Address');
+        expect(data).toHaveProperty('address', { addressCity: 'Paris' });
       });
   });
 
@@ -69,7 +71,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,
@@ -81,19 +85,22 @@ describe('CompanyResolver (e2e)', () => {
       .expect(200)
       .expect((res) => {
         const data = res.body.data.findManyCompany;
+
         expect(data).toBeDefined();
         expect(Array.isArray(data)).toBe(true);
         expect(data.length).toBeGreaterThan(0);
 
         const company = data.find((c) => c.id === companyId);
+
         expect(company).toBeDefined();
         expect(company).toHaveProperty('id');
         expect(company).toHaveProperty('name', 'New Company');
         expect(company).toHaveProperty('domainName', 'new-company.com');
-        expect(company).toHaveProperty('address', 'New Address');
+        expect(company).toHaveProperty('address', { addressCity: 'Paris' });
 
         // Check if we have access to ressources outside of our workspace
         const instagramCompany = data.find((c) => c.name === 'Instagram');
+
         expect(instagramCompany).toBeUndefined();
       });
   });
@@ -106,7 +113,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,
@@ -128,7 +137,7 @@ describe('CompanyResolver (e2e)', () => {
         expect(data).toHaveProperty('id');
         expect(data).toHaveProperty('name', 'New Company');
         expect(data).toHaveProperty('domainName', 'new-company.com');
-        expect(data).toHaveProperty('address', 'New Address');
+        expect(data).toHaveProperty('address', { addressCity: 'Paris' });
       });
   });
 
@@ -140,7 +149,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,
@@ -172,7 +183,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,
@@ -183,7 +196,7 @@ describe('CompanyResolver (e2e)', () => {
         data: {
           name: 'Updated Company',
           domainName: 'updated-company.com',
-          address: 'Updated Address',
+          address: { addressCity: 'Updated City' },
         },
       },
     };
@@ -199,7 +212,7 @@ describe('CompanyResolver (e2e)', () => {
         expect(data).toHaveProperty('id');
         expect(data).toHaveProperty('name', 'Updated Company');
         expect(data).toHaveProperty('domainName', 'updated-company.com');
-        expect(data).toHaveProperty('address', 'Updated Address');
+        expect(data).toHaveProperty('address', { addressCity: 'Updated City' });
       });
   });
 
@@ -211,7 +224,9 @@ describe('CompanyResolver (e2e)', () => {
             id
             name
             domainName
-            address
+            address {
+              addressCity
+            }
           }
         }
       `,

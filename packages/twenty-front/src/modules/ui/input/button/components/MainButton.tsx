@@ -1,16 +1,15 @@
-import React from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import React from 'react';
+import { IconComponent } from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-
-type Variant = 'primary' | 'secondary';
+export type MainButtonVariant = 'primary' | 'secondary';
 
 type Props = {
   title: string;
   fullWidth?: boolean;
   width?: number;
-  variant?: Variant;
+  variant?: MainButtonVariant;
   soon?: boolean;
 } & React.ComponentProps<'button'>;
 
@@ -25,7 +24,7 @@ const StyledButton = styled.button<
 
     switch (variant) {
       case 'primary':
-        return theme.background.radialGradient;
+        return theme.background.primaryInverted;
       case 'secondary':
         return theme.background.primary;
       default:
@@ -40,7 +39,7 @@ const StyledButton = styled.button<
 
     switch (variant) {
       case 'primary':
-        return theme.background.transparent.light;
+        return theme.background.transparent.strong;
       case 'secondary':
         return theme.border.color.medium;
       default:
@@ -62,7 +61,7 @@ const StyledButton = styled.button<
 
     switch (variant) {
       case 'primary':
-        return theme.grayScale.gray0;
+        return theme.font.color.inverted;
       case 'secondary':
         return theme.font.color.primary;
       default:
@@ -80,7 +79,7 @@ const StyledButton = styled.button<
   padding: ${({ theme }) => theme.spacing(2)} ${({ theme }) => theme.spacing(3)};
   width: ${({ fullWidth, width }) =>
     fullWidth ? '100%' : width ? `${width}px` : 'auto'};
-  ${({ theme, variant }) => {
+  ${({ theme, variant, disabled }) => {
     switch (variant) {
       case 'secondary':
         return `
@@ -91,7 +90,11 @@ const StyledButton = styled.button<
       default:
         return `
           &:hover {
-            background: ${theme.background.radialGradientHover}};
+            background: ${
+              !disabled
+                ? theme.background.primaryInvertedHover
+                : theme.background.secondary
+            };};
           }
         `;
     }

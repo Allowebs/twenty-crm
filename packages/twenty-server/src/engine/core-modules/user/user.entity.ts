@@ -1,25 +1,34 @@
-import { ID, Field, ObjectType } from '@nestjs/graphql';
+import { Field, ObjectType, registerEnumType } from '@nestjs/graphql';
 
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-  ManyToOne,
-} from 'typeorm';
 import { IDField } from '@ptc-org/nestjs-query-graphql';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  Relation,
+  UpdateDateColumn,
+} from 'typeorm';
 
-import { RefreshToken } from 'src/engine/core-modules/refresh-token/refresh-token.entity';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { WorkspaceMember } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
+import { AppToken } from 'src/engine/core-modules/app-token/app-token.entity';
+import { KeyValuePair } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
+import { OnboardingStatus } from 'src/engine/core-modules/onboarding/enums/onboarding-status.enum';
 import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { WorkspaceMember } from 'src/engine/core-modules/user/dtos/workspace-member.dto';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+
+registerEnumType(OnboardingStatus, {
+  name: 'OnboardingStatus',
+  description: 'Onboarding status',
+});
 
 @Entity({ name: 'user', schema: 'core' })
 @ObjectType('User')
 export class User {
-  @IDField(() => ID)
+  @IDField(() => UUIDScalarType)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -56,44 +65,44 @@ export class User {
   canImpersonate: boolean;
 
   @Field()
-  @CreateDateColumn({ type: 'timestamp with time zone' })
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
   @Field()
-  @UpdateDateColumn({ type: 'timestamp with time zone' })
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @Field({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'timestamptz' })
   deletedAt: Date;
 
   @Field(() => Workspace, { nullable: false })
   @ManyToOne(() => Workspace, (workspace) => workspace.users, {
-    onDelete: 'SET NULL',
+    onDelete: 'RESTRICT',
   })
-  defaultWorkspace: Workspace;
+  defaultWorkspace: Relation<Workspace>;
 
   @Field()
   @Column()
   defaultWorkspaceId: string;
 
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  passwordResetToken: string;
-
-  @Field({ nullable: true })
-  @Column({ nullable: true })
-  passwordResetTokenExpiresAt: Date;
-
-  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user, {
+  @OneToMany(() => AppToken, (appToken) => appToken.user, {
     cascade: true,
   })
-  refreshTokens: RefreshToken[];
+  appTokens: Relation<AppToken[]>;
+
+  @OneToMany(() => KeyValuePair, (keyValuePair) => keyValuePair.user, {
+    cascade: true,
+  })
+  keyValuePairs: Relation<KeyValuePair[]>;
 
   @Field(() => WorkspaceMember, { nullable: true })
-  workspaceMember: WorkspaceMember;
+  workspaceMember: Relation<WorkspaceMember>;
 
   @Field(() => [UserWorkspace])
   @OneToMany(() => UserWorkspace, (userWorkspace) => userWorkspace.user)
-  workspaces: UserWorkspace[];
+  workspaces: Relation<UserWorkspace[]>;
+
+  @Field(() => OnboardingStatus, { nullable: true })
+  onboardingStatus: OnboardingStatus;
 }

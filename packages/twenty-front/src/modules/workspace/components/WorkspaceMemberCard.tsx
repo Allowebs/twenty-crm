@@ -1,7 +1,6 @@
 import styled from '@emotion/styled';
+import { Avatar, OverflowingTextWithTooltip } from 'twenty-ui';
 
-import { OverflowingTextWithTooltip } from '@/ui/display/tooltip/OverflowingTextWithTooltip';
-import { Avatar } from '@/users/components/Avatar';
 import { WorkspaceMember } from '@/workspace-member/types/WorkspaceMember';
 
 const StyledContainer = styled.div`
@@ -40,7 +39,7 @@ export const WorkspaceMemberCard = ({
   <StyledContainer>
     <Avatar
       avatarUrl={workspaceMember.avatarUrl}
-      entityId={workspaceMember.id}
+      placeholderColorSeed={workspaceMember.id}
       placeholder={workspaceMember.name.firstName || ''}
       type="squared"
       size="xl"
@@ -53,7 +52,6 @@ export const WorkspaceMemberCard = ({
       />
       <StyledEmailText>{workspaceMember.userEmail}</StyledEmailText>
     </StyledContent>
-
     {accessory}
   </StyledContainer>
 );

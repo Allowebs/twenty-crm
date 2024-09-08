@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 
 import { GraphQLResolveInfo } from 'graphql';
 
@@ -12,21 +12,18 @@ import {
   RelationDirection,
 } from 'src/engine/utils/deduce-relation-direction.util';
 import { getFieldArgumentsByKey } from 'src/engine/api/graphql/workspace-query-builder/utils/get-field-arguments-by-key.util';
-import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
 import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
+import { computeColumnName } from 'src/engine/metadata-modules/field-metadata/utils/compute-column-name.util';
 
 import { FieldsStringFactory } from './fields-string.factory';
 import { ArgsStringFactory } from './args-string.factory';
 
 @Injectable()
 export class RelationFieldAliasFactory {
-  private logger = new Logger(RelationFieldAliasFactory.name);
-
   constructor(
     @Inject(forwardRef(() => FieldsStringFactory))
-    private readonly fieldsStringFactory: FieldsStringFactory,
+    private readonly fieldsStringFactory: CircularDep<FieldsStringFactory>,
     private readonly argsStringFactory: ArgsStringFactory,
-    private readonly objectMetadataService: ObjectMetadataService,
   ) {}
 
   create(
@@ -35,6 +32,7 @@ export class RelationFieldAliasFactory {
     fieldMetadata: FieldMetadataInterface,
     objectMetadataCollection: ObjectMetadataInterface[],
     info: GraphQLResolveInfo,
+    withSoftDeleted?: boolean,
   ): Promise<string> {
     if (!isRelationFieldMetadataType(fieldMetadata.type)) {
       throw new Error(`Field ${fieldMetadata.name} is not a relation field`);
@@ -46,6 +44,7 @@ export class RelationFieldAliasFactory {
       fieldMetadata,
       objectMetadataCollection,
       info,
+      withSoftDeleted,
     );
   }
 
@@ -55,6 +54,7 @@ export class RelationFieldAliasFactory {
     fieldMetadata: FieldMetadataInterface,
     objectMetadataCollection: ObjectMetadataInterface[],
     info: GraphQLResolveInfo,
+    withSoftDeleted?: boolean,
   ): Promise<string> {
     const relationMetadata =
       fieldMetadata.fromRelationMetadata ?? fieldMetadata.toRelationMetadata;
@@ -97,9 +97,11 @@ export class RelationFieldAliasFactory {
       relationDirection === RelationDirection.FROM
     ) {
       const args = getFieldArgumentsByKey(info, fieldKey);
+
       const argsString = this.argsStringFactory.create(
         args,
         referencedObjectMetadata.fields ?? [],
+        !withSoftDeleted && !!referencedObjectMetadata.isSoftDeletable,
       );
       const fieldsString =
         await this.fieldsStringFactory.createFieldsStringRecursive(
@@ -107,6 +109,7 @@ export class RelationFieldAliasFactory {
           fieldValue,
           referencedObjectMetadata.fields ?? [],
           objectMetadataCollection,
+          withSoftDeleted ?? false,
         );
 
       return `
@@ -118,9 +121,7 @@ export class RelationFieldAliasFactory {
       `;
     }
 
-    let relationAlias = fieldMetadata.isCustom
-      ? `${fieldKey}: _${fieldMetadata.name}`
-      : fieldKey;
+    let relationAlias = `${fieldKey}: ${computeColumnName(fieldMetadata)}`;
 
     // For one to one relations, pg_graphql use the target TableName on the side that is not storing the foreign key
     // so we need to alias it to the field key
@@ -138,6 +139,7 @@ export class RelationFieldAliasFactory {
         fieldValue,
         referencedObjectMetadata.fields ?? [],
         objectMetadataCollection,
+        withSoftDeleted ?? false,
       );
 
     // Otherwise it means it's a relation destination is of kind ONE

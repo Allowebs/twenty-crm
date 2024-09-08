@@ -1,17 +1,13 @@
-import { useNavigate } from 'react-router-dom';
 import styled from '@emotion/styled';
+import { H2Title, IconCode, IconPlus } from 'twenty-ui';
 
-import { SettingsHeaderContainer } from '@/settings/components/SettingsHeaderContainer';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsApiKeysTable } from '@/settings/developers/components/SettingsApiKeysTable';
 import { SettingsReadDocumentationButton } from '@/settings/developers/components/SettingsReadDocumentationButton';
 import { SettingsWebhooksTable } from '@/settings/developers/components/SettingsWebhooksTable';
-import { IconPlus, IconSettings } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
 import { Button } from '@/ui/input/button/components/Button';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
 import { Section } from '@/ui/layout/section/components/Section';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
 
 const StyledButtonContainer = styled.div`
   display: flex;
@@ -20,15 +16,13 @@ const StyledButtonContainer = styled.div`
 `;
 
 export const SettingsDevelopers = () => {
-  const navigate = useNavigate();
-
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+    <SubMenuTopBarContainer
+      Icon={IconCode}
+      title="Developers"
+      actionButton={<SettingsReadDocumentationButton />}
+    >
       <SettingsPageContainer>
-        <SettingsHeaderContainer>
-          <Breadcrumb links={[{ children: 'Developers' }]} />
-          <SettingsReadDocumentationButton />
-        </SettingsHeaderContainer>
         <Section>
           <H2Title
             title="API keys"
@@ -41,9 +35,7 @@ export const SettingsDevelopers = () => {
               title="Create API key"
               size="small"
               variant="secondary"
-              onClick={() => {
-                navigate('/settings/developers/api-keys/new');
-              }}
+              to={'/settings/developers/api-keys/new'}
             />
           </StyledButtonContainer>
         </Section>
@@ -59,9 +51,7 @@ export const SettingsDevelopers = () => {
               title="Create Webhook"
               size="small"
               variant="secondary"
-              onClick={() => {
-                navigate('/settings/developers/webhooks/new');
-              }}
+              to={'/settings/developers/webhooks/new'}
             />
           </StyledButtonContainer>
         </Section>

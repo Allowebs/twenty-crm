@@ -1,27 +1,30 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { useIcons } from 'twenty-ui';
 
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { isLabelIdentifierField } from '@/object-metadata/utils/isLabelIdentifierField';
 import { FieldDisplay } from '@/object-record/record-field/components/FieldDisplay';
 import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
 import { BooleanFieldInput } from '@/object-record/record-field/meta-types/input/components/BooleanFieldInput';
 import { RatingFieldInput } from '@/object-record/record-field/meta-types/input/components/RatingFieldInput';
-import { SettingsObjectFieldSelectFormValues } from '@/settings/data-model/components/SettingsObjectFieldSelectForm';
 import { SettingsDataModelSetFieldValueEffect } from '@/settings/data-model/fields/preview/components/SettingsDataModelSetFieldValueEffect';
-import { SettingsDataModelSetRecordEffect } from '@/settings/data-model/fields/preview/components/SettingsDataModelSetRecordEffect';
-import { useFieldPreview } from '@/settings/data-model/fields/preview/hooks/useFieldPreview';
-import { useIcons } from '@/ui/display/icon/hooks/useIcons';
+import { SettingsDataModelSetPreviewRecordEffect } from '@/settings/data-model/fields/preview/components/SettingsDataModelSetRecordEffect';
+import { useFieldPreviewValue } from '@/settings/data-model/fields/preview/hooks/useFieldPreviewValue';
+import { usePreviewRecord } from '@/settings/data-model/fields/preview/hooks/usePreviewRecord';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 export type SettingsDataModelFieldPreviewProps = {
-  fieldMetadataItem: Pick<FieldMetadataItem, 'icon' | 'label' | 'type'> & {
+  fieldMetadataItem: Pick<
+    FieldMetadataItem,
+    'icon' | 'label' | 'type' | 'defaultValue' | 'options'
+  > & {
     id?: string;
     name?: string;
   };
   objectMetadataItem: ObjectMetadataItem;
   relationObjectMetadataItem?: ObjectMetadataItem;
-  selectOptions?: SettingsObjectFieldSelectFormValues;
   shrink?: boolean;
   withFieldLabel?: boolean;
 };
@@ -52,7 +55,6 @@ export const SettingsDataModelFieldPreview = ({
   fieldMetadataItem,
   objectMetadataItem,
   relationObjectMetadataItem,
-  selectOptions,
   shrink,
   withFieldLabel = true,
 }: SettingsDataModelFieldPreviewProps) => {
@@ -61,21 +63,46 @@ export const SettingsDataModelFieldPreview = ({
   const { getIcon } = useIcons();
   const FieldIcon = getIcon(fieldMetadataItem.icon);
 
-  const { entityId, fieldName, fieldPreviewValue, isLabelIdentifier, record } =
-    useFieldPreview({
-      fieldMetadataItem,
+  // id and name are undefined in create mode (field does not exist yet)
+  // and defined in edit mode.
+  const isLabelIdentifier =
+    !!fieldMetadataItem.id &&
+    !!fieldMetadataItem.name &&
+    isLabelIdentifierField({
+      fieldMetadataItem: {
+        id: fieldMetadataItem.id,
+        name: fieldMetadataItem.name,
+      },
       objectMetadataItem,
-      relationObjectMetadataItem,
-      selectOptions,
     });
+
+  const previewRecord = usePreviewRecord({
+    objectMetadataItem,
+    skip: !isLabelIdentifier,
+  });
+
+  const fieldPreviewValue = useFieldPreviewValue({
+    fieldMetadataItem,
+    relationObjectMetadataItem,
+    skip: isLabelIdentifier,
+  });
+
+  const fieldName =
+    fieldMetadataItem.name || `${fieldMetadataItem.type}-new-field`;
+  const recordId =
+    previewRecord?.id ??
+    `${objectMetadataItem.nameSingular}-${fieldName}-preview`;
 
   return (
     <>
-      {record ? (
-        <SettingsDataModelSetRecordEffect record={record} />
+      {previewRecord ? (
+        <SettingsDataModelSetPreviewRecordEffect
+          fieldName={fieldName}
+          record={previewRecord}
+        />
       ) : (
         <SettingsDataModelSetFieldValueEffect
-          entityId={entityId}
+          recordId={recordId}
           fieldName={fieldName}
           value={fieldPreviewValue}
         />
@@ -92,7 +119,7 @@ export const SettingsDataModelFieldPreview = ({
         )}
         <FieldContext.Provider
           value={{
-            entityId,
+            recordId,
             isLabelIdentifier,
             fieldDefinition: {
               type: fieldMetadataItem.type,
@@ -104,8 +131,9 @@ export const SettingsDataModelFieldPreview = ({
                 objectMetadataNameSingular: objectMetadataItem.nameSingular,
                 relationObjectMetadataNameSingular:
                   relationObjectMetadataItem?.nameSingular,
-                options: selectOptions,
+                options: fieldMetadataItem.options ?? [],
               },
+              defaultValue: fieldMetadataItem.defaultValue,
             },
             hotkeyScope: 'field-preview',
           }}

@@ -1,29 +1,27 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import {
+  Controller,
+  Get,
+  Req,
+  Res,
+  UseFilters,
+  UseGuards,
+} from '@nestjs/common';
 
 import { Response } from 'express';
-import { Repository } from 'typeorm';
 
-import { GoogleRequest } from 'src/engine/core-modules/auth/strategies/google.auth.strategy';
-import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
-import { GoogleProviderEnabledGuard } from 'src/engine/core-modules/auth/guards/google-provider-enabled.guard';
+import { AuthRestApiExceptionFilter } from 'src/engine/core-modules/auth/filters/auth-rest-api-exception.filter';
 import { GoogleOauthGuard } from 'src/engine/core-modules/auth/guards/google-oauth.guard';
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { GoogleProviderEnabledGuard } from 'src/engine/core-modules/auth/guards/google-provider-enabled.guard';
 import { AuthService } from 'src/engine/core-modules/auth/services/auth.service';
-import { TypeORMService } from 'src/database/typeorm/typeorm.service';
-import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { TokenService } from 'src/engine/core-modules/auth/services/token.service';
+import { GoogleRequest } from 'src/engine/core-modules/auth/strategies/google.auth.strategy';
 
 @Controller('auth/google')
+@UseFilters(AuthRestApiExceptionFilter)
 export class GoogleAuthController {
   constructor(
     private readonly tokenService: TokenService,
-    private readonly environmentService: EnvironmentService,
-    private readonly typeORMService: TypeORMService,
     private readonly authService: AuthService,
-    @InjectRepository(Workspace, 'core')
-    @InjectRepository(User, 'core')
-    private readonly userRepository: Repository<User>,
   ) {}
 
   @Get()
@@ -39,28 +37,13 @@ export class GoogleAuthController {
     const { firstName, lastName, email, picture, workspaceInviteHash } =
       req.user;
 
-    const mainDataSource = this.typeORMService.getMainDataSource();
-
-    const existingUser = await mainDataSource
-      .getRepository(User)
-      .findOneBy({ email: email });
-
-    if (existingUser) {
-      const loginToken = await this.tokenService.generateLoginToken(
-        existingUser.email,
-      );
-
-      return res.redirect(
-        this.tokenService.computeRedirectURI(loginToken.token),
-      );
-    }
-
-    const user = await this.authService.signUp({
+    const user = await this.authService.signInUp({
       email,
       firstName,
       lastName,
       picture,
       workspaceInviteHash,
+      fromSSO: true,
     });
 
     const loginToken = await this.tokenService.generateLoginToken(user.email);

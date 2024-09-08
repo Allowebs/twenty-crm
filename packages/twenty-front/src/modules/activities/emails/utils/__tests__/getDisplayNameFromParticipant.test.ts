@@ -8,6 +8,7 @@ describe('getDisplayNameFromParticipant', () => {
     handle: '',
     role: 'from',
     person: {
+      __typename: 'Person',
       id: '1',
       createdAt: '',
       updatedAt: '',
@@ -19,12 +20,12 @@ describe('getDisplayNameFromParticipant', () => {
       avatarUrl: '',
       jobTitle: '',
       linkedinLink: {
-        url: '',
-        label: '',
+        primaryLinkUrl: '',
+        primaryLinkLabel: '',
       },
       xLink: {
-        url: '',
-        label: '',
+        primaryLinkUrl: '',
+        primaryLinkLabel: '',
       },
       city: '',
       email: '',
@@ -32,6 +33,7 @@ describe('getDisplayNameFromParticipant', () => {
       companyId: '',
     },
     workspaceMember: {
+      __typename: 'WorkspaceMember',
       id: '1',
       name: {
         firstName: 'Jane',

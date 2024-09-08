@@ -1,60 +1,55 @@
 import { useEffect } from 'react';
-import { useQuery } from '@apollo/client';
 import { useRecoilValue } from 'recoil';
 
 import { currentUserState } from '@/auth/states/currentUserState';
-import { EMPTY_QUERY } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useGenerateFindManyRecordsForMultipleMetadataItemsQuery } from '@/object-record/hooks/useGenerateFindManyRecordsForMultipleMetadataItemsQuery';
-import { MultiObjectRecordQueryResult } from '@/object-record/relation-picker/hooks/useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray';
+import { Favorite } from '@/favorites/types/Favorite';
+import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
+import { useCombinedFindManyRecords } from '@/object-record/multiple-objects/hooks/useCombinedFindManyRecords';
+import { PREFETCH_CONFIG } from '@/prefetch/constants/PrefetchConfig';
 import { usePrefetchRunQuery } from '@/prefetch/hooks/internal/usePrefetchRunQuery';
 import { PrefetchKey } from '@/prefetch/types/PrefetchKey';
+import { View } from '@/views/types/View';
 import { isDefined } from '~/utils/isDefined';
 
 export const PrefetchRunQueriesEffect = () => {
   const currentUser = useRecoilValue(currentUserState);
 
-  const {
-    objectMetadataItem: objectMetadataItemView,
-    upsertRecordsInCache: upsertViewsInCache,
-  } = usePrefetchRunQuery({
-    prefetchKey: PrefetchKey.AllViews,
-    objectNameSingular: CoreObjectNameSingular.View,
-  });
-
-  const {
-    objectMetadataItem: objectMetadataItemFavorite,
-    upsertRecordsInCache: upsertFavoritesInCache,
-  } = usePrefetchRunQuery({
-    prefetchKey: PrefetchKey.AllFavorites,
-    objectNameSingular: CoreObjectNameSingular.Favorite,
-  });
-
-  const prefetchFindManyQuery =
-    useGenerateFindManyRecordsForMultipleMetadataItemsQuery({
-      targetObjectMetadataItems: [
-        objectMetadataItemView,
-        objectMetadataItemFavorite,
-      ],
-      depth: 1,
+  const { upsertRecordsInCache: upsertViewsInCache } =
+    usePrefetchRunQuery<View>({
+      prefetchKey: PrefetchKey.AllViews,
     });
 
-  const { data } = useQuery<MultiObjectRecordQueryResult>(
-    prefetchFindManyQuery ?? EMPTY_QUERY,
-    {
-      skip: !currentUser,
+  const { upsertRecordsInCache: upsertFavoritesInCache } =
+    usePrefetchRunQuery<Favorite>({
+      prefetchKey: PrefetchKey.AllFavorites,
+    });
+
+  const { objectMetadataItems } = useObjectMetadataItems();
+
+  const operationSignatures = Object.values(PREFETCH_CONFIG).map(
+    ({ objectNameSingular, operationSignatureFactory }) => {
+      const objectMetadataItem = objectMetadataItems.find(
+        (item) => item.nameSingular === objectNameSingular,
+      );
+
+      return operationSignatureFactory({ objectMetadataItem });
     },
   );
 
+  const { result } = useCombinedFindManyRecords({
+    operationSignatures,
+    skip: !currentUser,
+  });
+
   useEffect(() => {
-    if (isDefined(data?.views)) {
-      upsertViewsInCache(data.views);
+    if (isDefined(result.views)) {
+      upsertViewsInCache(result.views as View[]);
     }
 
-    if (isDefined(data?.favorites)) {
-      upsertFavoritesInCache(data.favorites);
+    if (isDefined(result.favorites)) {
+      upsertFavoritesInCache(result.favorites as Favorite[]);
     }
-  }, [data, upsertViewsInCache, upsertFavoritesInCache]);
+  }, [result, upsertViewsInCache, upsertFavoritesInCache]);
 
   return <></>;
 };

@@ -1,22 +1,26 @@
 import { useRecoilValue } from 'recoil';
+import { H2Title, IconAt } from 'twenty-ui';
 
 import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
 import { SettingsAccountLoader } from '@/settings/accounts/components/SettingsAccountLoader';
+import { SettingsAccountsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsBlocklistSection';
 import { SettingsAccountsConnectedAccountsListCard } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsListCard';
-import { SettingsAccountsEmailsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsEmailsBlocklistSection';
 import { SettingsAccountsSettingsSection } from '@/settings/accounts/components/SettingsAccountsSettingsSection';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
 import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
 import { Section } from '@/ui/layout/section/components/Section';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
 
 export const SettingsAccounts = () => {
   const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
+
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
+  });
 
   const { records: accounts, loading } = useFindManyRecords<ConnectedAccount>({
     objectNameSingular: 'connectedAccount',
@@ -25,21 +29,12 @@ export const SettingsAccounts = () => {
         eq: currentWorkspaceMember?.id,
       },
     },
+    recordGqlFields: generateDepthOneRecordGqlFields({ objectMetadataItem }),
   });
 
-  const isBlocklistEnabled = useIsFeatureEnabled('IS_BLOCKLIST_ENABLED');
-
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
-      <SettingsPageContainer
-        style={
-          loading
-            ? { height: '100%', boxSizing: 'border-box', width: '100%' }
-            : {}
-        }
-      >
-        <Breadcrumb links={[{ children: 'Accounts' }]} />
-
+    <SubMenuTopBarContainer Icon={IconAt} title="Account">
+      <SettingsPageContainer>
         {loading ? (
           <SettingsAccountLoader />
         ) : (
@@ -54,7 +49,7 @@ export const SettingsAccounts = () => {
                 loading={loading}
               />
             </Section>
-            {isBlocklistEnabled && <SettingsAccountsEmailsBlocklistSection />}
+            <SettingsAccountsBlocklistSection />
             <SettingsAccountsSettingsSection />
           </>
         )}

@@ -1,29 +1,46 @@
 import { useState } from 'react';
 import { Key } from 'ts-key-enum';
-
-import { RECORD_INDEX_OPTIONS_DROPDOWN_ID } from '@/object-record/record-index/options/constants/RecordIndexOptionsDropdownId';
-import { useRecordIndexOptionsForBoard } from '@/object-record/record-index/options/hooks/useRecordIndexOptionsForBoard';
-import { useRecordIndexOptionsForTable } from '@/object-record/record-index/options/hooks/useRecordIndexOptionsForTable';
-import { TableOptionsHotkeyScope } from '@/object-record/record-table/types/TableOptionsHotkeyScope';
-import { useSpreadsheetRecordImport } from '@/object-record/spreadsheet-import/useSpreadsheetRecordImport';
 import {
   IconBaselineDensitySmall,
   IconChevronLeft,
+  IconEyeOff,
+  IconFileExport,
   IconFileImport,
+  IconRotate2,
+  IconSettings,
   IconTag,
-} from '@/ui/display/icon';
+} from 'twenty-ui';
+
+import { useObjectNamePluralFromSingular } from '@/object-metadata/hooks/useObjectNamePluralFromSingular';
+import { useHandleToggleTrashColumnFilter } from '@/object-record/record-index/hooks/useHandleToggleTrashColumnFilter';
+import { RECORD_INDEX_OPTIONS_DROPDOWN_ID } from '@/object-record/record-index/options/constants/RecordIndexOptionsDropdownId';
+import {
+  displayedExportProgress,
+  useExportTableData,
+} from '@/object-record/record-index/options/hooks/useExportTableData';
+import { useRecordIndexOptionsForBoard } from '@/object-record/record-index/options/hooks/useRecordIndexOptionsForBoard';
+import { useRecordIndexOptionsForTable } from '@/object-record/record-index/options/hooks/useRecordIndexOptionsForTable';
+import { TableOptionsHotkeyScope } from '@/object-record/record-table/types/TableOptionsHotkeyScope';
+import { useOpenObjectRecordsSpreasheetImportDialog } from '@/object-record/spreadsheet-import/hooks/useOpenObjectRecordsSpreasheetImportDialog';
+import { getSettingsPagePath } from '@/settings/utils/getSettingsPagePath';
+import { SettingsPath } from '@/types/SettingsPath';
 import { DropdownMenuHeader } from '@/ui/layout/dropdown/components/DropdownMenuHeader';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
+import { UndecoratedLink } from '@/ui/navigation/link/components/UndecoratedLink';
 import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
+import { MenuItemNavigate } from '@/ui/navigation/menu-item/components/MenuItemNavigate';
 import { MenuItemToggle } from '@/ui/navigation/menu-item/components/MenuItemToggle';
+import { navigationMemorizedUrlState } from '@/ui/navigation/states/navigationMemorizedUrlState';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import { ViewFieldsVisibilityDropdownSection } from '@/views/components/ViewFieldsVisibilityDropdownSection';
 import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
 import { ViewType } from '@/views/types/ViewType';
+import { useLocation } from 'react-router-dom';
+import { useSetRecoilState } from 'recoil';
 
-type RecordIndexOptionsMenu = 'fields';
+type RecordIndexOptionsMenu = 'fields' | 'hiddenFields';
 
 type RecordIndexOptionsDropdownContentProps = {
   recordIndexId: string;
@@ -50,6 +67,14 @@ export const RecordIndexOptionsDropdownContent = ({
     setCurrentMenu(option);
   };
 
+  const { objectNamePlural } = useObjectNamePluralFromSingular({
+    objectNameSingular: objectNameSingular,
+  });
+
+  const settingsUrl = getSettingsPagePath(SettingsPath.ObjectDetail, {
+    objectSlug: objectNamePlural,
+  });
+
   useScopedHotkeys(
     [Key.Escape],
     () => {
@@ -64,6 +89,11 @@ export const RecordIndexOptionsDropdownContent = ({
     visibleTableColumns,
     hiddenTableColumns,
   } = useRecordIndexOptionsForTable(recordIndexId);
+
+  const handleToggleTrashColumnFilter = useHandleToggleTrashColumnFilter({
+    objectNameSingular,
+    viewBarId: recordIndexId,
+  });
 
   const {
     visibleBoardFields,
@@ -94,8 +124,21 @@ export const RecordIndexOptionsDropdownContent = ({
       ? handleBoardFieldVisibilityChange
       : handleColumnVisibilityChange;
 
-  const { openRecordSpreadsheetImport } =
-    useSpreadsheetRecordImport(objectNameSingular);
+  const { openObjectRecordsSpreasheetImportDialog } =
+    useOpenObjectRecordsSpreasheetImportDialog(objectNameSingular);
+
+  const { progress, download } = useExportTableData({
+    delayMs: 100,
+    filename: `${objectNameSingular}.csv`,
+    objectNameSingular,
+    recordIndexId,
+    viewType,
+  });
+
+  const location = useLocation();
+  const setNavigationMemorizedUrl = useSetRecoilState(
+    navigationMemorizedUrlState,
+  );
 
   return (
     <>
@@ -105,11 +148,25 @@ export const RecordIndexOptionsDropdownContent = ({
             onClick={() => handleSelectMenu('fields')}
             LeftIcon={IconTag}
             text="Fields"
+            hasSubMenu
           />
           <MenuItem
-            onClick={() => openRecordSpreadsheetImport()}
+            onClick={() => openObjectRecordsSpreasheetImportDialog()}
             LeftIcon={IconFileImport}
             text="Import"
+          />
+          <MenuItem
+            onClick={download}
+            LeftIcon={IconFileExport}
+            text={displayedExportProgress(progress)}
+          />
+          <MenuItem
+            onClick={() => {
+              handleToggleTrashColumnFilter();
+              closeDropdown();
+            }}
+            LeftIcon={IconRotate2}
+            text={`Deleted ${objectNamePlural}`}
           />
         </DropdownMenuItemsContainer>
       )}
@@ -118,28 +175,62 @@ export const RecordIndexOptionsDropdownContent = ({
           <DropdownMenuHeader StartIcon={IconChevronLeft} onClick={resetMenu}>
             Fields
           </DropdownMenuHeader>
-          <DropdownMenuSeparator />
           <ViewFieldsVisibilityDropdownSection
             title="Visible"
             fields={visibleRecordFields}
             isDraggable
             onDragEnd={handleReorderFields}
             onVisibilityChange={handleChangeFieldVisibility}
+            showSubheader={false}
+            showDragGrip={true}
           />
+          <DropdownMenuSeparator />
+          <DropdownMenuItemsContainer>
+            <MenuItemNavigate
+              onClick={() => handleSelectMenu('hiddenFields')}
+              LeftIcon={IconEyeOff}
+              text="Hidden Fields"
+            />
+          </DropdownMenuItemsContainer>
+        </>
+      )}
+      {currentMenu === 'hiddenFields' && (
+        <>
+          <DropdownMenuHeader
+            StartIcon={IconChevronLeft}
+            onClick={() => setCurrentMenu('fields')}
+          >
+            Hidden Fields
+          </DropdownMenuHeader>
           {hiddenRecordFields.length > 0 && (
             <>
-              <DropdownMenuSeparator />
               <ViewFieldsVisibilityDropdownSection
                 title="Hidden"
                 fields={hiddenRecordFields}
                 isDraggable={false}
                 onVisibilityChange={handleChangeFieldVisibility}
+                showSubheader={false}
+                showDragGrip={false}
               />
             </>
           )}
+          <DropdownMenuSeparator />
+
+          <UndecoratedLink
+            to={settingsUrl}
+            onClick={() => {
+              setNavigationMemorizedUrl(location.pathname + location.search);
+              closeDropdown();
+            }}
+          >
+            <DropdownMenuItemsContainer>
+              <MenuItem LeftIcon={IconSettings} text="Edit Fields" />
+            </DropdownMenuItemsContainer>
+          </UndecoratedLink>
         </>
       )}
-      {viewType === ViewType.Kanban && (
+
+      {viewType === ViewType.Kanban && !currentMenu && (
         <>
           <DropdownMenuSeparator />
           <DropdownMenuItemsContainer>

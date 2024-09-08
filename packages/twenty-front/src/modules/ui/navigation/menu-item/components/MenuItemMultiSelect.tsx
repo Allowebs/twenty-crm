@@ -1,10 +1,8 @@
 import styled from '@emotion/styled';
-import { Tag } from 'tsup.ui.index';
+import { IconComponent, Tag, ThemeColor } from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
 import { Checkbox } from '@/ui/input/components/Checkbox';
 import { MenuItemLeftContent } from '@/ui/navigation/menu-item/internals/components/MenuItemLeftContent';
-import { ThemeColor } from '@/ui/theme/constants/MainColorNames';
 
 import { StyledMenuItemBase } from '../internals/components/StyledMenuItemBase';
 
@@ -19,6 +17,7 @@ type MenuItemMultiSelectProps = {
   color?: ThemeColor;
   LeftIcon?: IconComponent;
   selected: boolean;
+  isKeySelected?: boolean;
   text: string;
   className: string;
   onSelectChange?: (selected: boolean) => void;
@@ -29,6 +28,7 @@ export const MenuItemMultiSelect = ({
   LeftIcon,
   text,
   selected,
+  isKeySelected,
   className,
   onSelectChange,
 }: MenuItemMultiSelectProps) => {
@@ -37,7 +37,11 @@ export const MenuItemMultiSelect = ({
   };
 
   return (
-    <StyledMenuItemBase className={className} onClick={handleOnClick}>
+    <StyledMenuItemBase
+      isKeySelected={isKeySelected}
+      className={className}
+      onClick={handleOnClick}
+    >
       <StyledLeftContentWithCheckboxContainer>
         <Checkbox checked={selected} />
         {color ? (

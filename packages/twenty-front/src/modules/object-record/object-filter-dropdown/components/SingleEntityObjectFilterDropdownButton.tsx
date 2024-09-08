@@ -1,10 +1,10 @@
 import React from 'react';
 import { useTheme } from '@emotion/react';
 import { useRecoilValue } from 'recoil';
+import { IconChevronDown } from 'twenty-ui';
 
 import { ObjectFilterDropdownRecordRemoveFilterMenuItem } from '@/object-record/object-filter-dropdown/components/ObjectFilterDropdownRecordRemoveFilterMenuItem';
 import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { IconChevronDown } from '@/ui/display/icon/index';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
 import { StyledHeaderDropdownButton } from '@/ui/layout/dropdown/components/StyledHeaderDropdownButton';
@@ -16,6 +16,8 @@ import { getOperandsForFilterType } from '../utils/getOperandsForFilterType';
 import { GenericEntityFilterChip } from './GenericEntityFilterChip';
 import { ObjectFilterDropdownRecordSelect } from './ObjectFilterDropdownRecordSelect';
 import { ObjectFilterDropdownSearchInput } from './ObjectFilterDropdownSearchInput';
+
+const SINGLE_ENTITY_FILTER_DROPDOWN_ID = 'single-entity-filter-dropdown';
 
 export const SingleEntityObjectFilterDropdownButton = ({
   hotkeyScope,
@@ -50,7 +52,7 @@ export const SingleEntityObjectFilterDropdownButton = ({
 
   return (
     <Dropdown
-      dropdownId="single-entity-filter-dropdown"
+      dropdownId={SINGLE_ENTITY_FILTER_DROPDOWN_ID}
       dropdownHotkeyScope={hotkeyScope}
       dropdownOffset={{ x: 0, y: -28 }}
       clickableComponent={
@@ -75,7 +77,9 @@ export const SingleEntityObjectFilterDropdownButton = ({
           <ObjectFilterDropdownSearchInput />
           <DropdownMenuSeparator />
           <ObjectFilterDropdownRecordRemoveFilterMenuItem />
-          <ObjectFilterDropdownRecordSelect />
+          <ObjectFilterDropdownRecordSelect
+            viewComponentId={SINGLE_ENTITY_FILTER_DROPDOWN_ID}
+          />
         </>
       }
     />

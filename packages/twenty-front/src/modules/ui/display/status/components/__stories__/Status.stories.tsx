@@ -1,13 +1,12 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, within } from '@storybook/test';
-
 import {
+  CatalogDecorator,
+  CatalogStory,
+  ComponentDecorator,
   MAIN_COLOR_NAMES,
   ThemeColor,
-} from '@/ui/theme/constants/MainColorNames';
-import { CatalogDecorator } from '~/testing/decorators/CatalogDecorator';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
-import { CatalogStory } from '~/testing/types';
+} from 'twenty-ui';
 
 import { Status } from '../Status';
 
@@ -16,6 +15,7 @@ const meta: Meta<typeof Status> = {
   component: Status,
   args: {
     text: 'Urgent',
+    weight: 'medium',
   },
 };
 

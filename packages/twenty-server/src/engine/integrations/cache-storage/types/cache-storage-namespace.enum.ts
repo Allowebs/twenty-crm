@@ -1,4 +1,5 @@
 export enum CacheStorageNamespace {
-  Messaging = 'messaging',
-  WorkspaceSchema = 'workspaceSchema',
+  ModuleMessaging = 'module:messaging',
+  ModuleCalendar = 'module:calendar',
+  EngineWorkspace = 'engine:workspace',
 }

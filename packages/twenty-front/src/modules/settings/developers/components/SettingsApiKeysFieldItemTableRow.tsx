@@ -1,8 +1,8 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconChevronRight } from 'twenty-ui';
 
 import { ApiFieldItem } from '@/settings/developers/types/api-key/ApiFieldItem';
-import { IconChevronRight } from '@/ui/display/icon';
 import { TableCell } from '@/ui/layout/table/components/TableCell';
 import { TableRow } from '@/ui/layout/table/components/TableRow';
 
@@ -26,15 +26,15 @@ const StyledIconChevronRight = styled(IconChevronRight)`
 
 export const SettingsApiKeysFieldItemTableRow = ({
   fieldItem,
-  onClick,
+  to,
 }: {
   fieldItem: ApiFieldItem;
-  onClick: () => void;
+  to: string;
 }) => {
   const theme = useTheme();
 
   return (
-    <StyledApisFieldTableRow onClick={() => onClick()}>
+    <StyledApisFieldTableRow to={to}>
       <StyledNameTableCell>{fieldItem.name}</StyledNameTableCell>
       <TableCell
         color={

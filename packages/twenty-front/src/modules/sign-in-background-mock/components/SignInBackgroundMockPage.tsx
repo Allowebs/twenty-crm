@@ -1,9 +1,10 @@
 import styled from '@emotion/styled';
+import { IconBuildingSkyscraper } from 'twenty-ui';
 
+import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
 import { RecordTableActionBar } from '@/object-record/record-table/action-bar/components/RecordTableActionBar';
 import { RecordTableContextMenu } from '@/object-record/record-table/context-menu/components/RecordTableContextMenu';
 import { SignInBackgroundMockContainer } from '@/sign-in-background-mock/components/SignInBackgroundMockContainer';
-import { IconBuildingSkyscraper } from '@/ui/display/icon';
 import { PageAddButton } from '@/ui/layout/page/PageAddButton';
 import { PageBody } from '@/ui/layout/page/PageBody';
 import { PageContainer } from '@/ui/layout/page/PageContainer';
@@ -19,16 +20,18 @@ const StyledTableContainer = styled.div`
 export const SignInBackgroundMockPage = () => {
   return (
     <PageContainer>
-      <PageHeader title="Objects" Icon={IconBuildingSkyscraper}>
+      <PageHeader title="Companies" Icon={IconBuildingSkyscraper}>
         <PageHotkeysEffect onAddButtonClick={() => {}} />
         <PageAddButton onClick={() => {}} />
       </PageHeader>
       <PageBody>
-        <StyledTableContainer>
-          <SignInBackgroundMockContainer />
-        </StyledTableContainer>
-        <RecordTableActionBar recordTableId="mock" />
-        <RecordTableContextMenu recordTableId="mock" />
+        <RecordFieldValueSelectorContextProvider>
+          <StyledTableContainer>
+            <SignInBackgroundMockContainer />
+          </StyledTableContainer>
+          <RecordTableActionBar recordTableId="mock" />
+          <RecordTableContextMenu recordTableId="mock" />
+        </RecordFieldValueSelectorContextProvider>
       </PageBody>
     </PageContainer>
   );

@@ -1,51 +1,54 @@
 import { useEffect, useState } from 'react';
-import { matchPath, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useRecoilValue } from 'recoil';
+import { IconCheckbox } from 'twenty-ui';
 
 import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
 import { useEventTracker } from '@/analytics/hooks/useEventTracker';
-import { useOnboardingStatus } from '@/auth/hooks/useOnboardingStatus';
-import { OnboardingStatus } from '@/auth/utils/getOnboardingStatus';
-import { isSignUpDisabledState } from '@/client-config/states/isSignUpDisabledState';
+import { useRequestFreshCaptchaToken } from '@/captcha/hooks/useRequestFreshCaptchaToken';
+import { isCaptchaScriptLoadedState } from '@/captcha/states/isCaptchaScriptLoadedState';
 import { useCommandMenu } from '@/command-menu/hooks/useCommandMenu';
 import { CommandType } from '@/command-menu/types/Command';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { TableHotkeyScope } from '@/object-record/record-table/types/TableHotkeyScope';
 import { AppBasePath } from '@/types/AppBasePath';
 import { AppPath } from '@/types/AppPath';
 import { PageHotkeyScope } from '@/types/PageHotkeyScope';
 import { SettingsPath } from '@/types/SettingsPath';
-import { IconCheckbox } from '@/ui/display/icon';
-import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
-import { useGetWorkspaceFromInviteHashLazyQuery } from '~/generated/graphql';
+import { useCleanRecoilState } from '~/hooks/useCleanRecoilState';
+import { useIsMatchingLocation } from '~/hooks/useIsMatchingLocation';
+import { usePageChangeEffectNavigateLocation } from '~/hooks/usePageChangeEffectNavigateLocation';
 import { isDefined } from '~/utils/isDefined';
-import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
-
-import { useIsMatchingLocation } from '../hooks/useIsMatchingLocation';
 
 // TODO: break down into smaller functions and / or hooks
+//  - moved usePageChangeEffectNavigateLocation into dedicated hook
 export const PageChangeEffect = () => {
   const navigate = useNavigate();
   const isMatchingLocation = useIsMatchingLocation();
-  const { enqueueSnackBar } = useSnackBar();
 
   const [previousLocation, setPreviousLocation] = useState('');
-
-  const onboardingStatus = useOnboardingStatus();
 
   const setHotkeyScope = useSetHotkeyScope();
 
   const location = useLocation();
 
+  const pageChangeEffectNavigateLocation =
+    usePageChangeEffectNavigateLocation();
+
+  const { cleanRecoilState } = useCleanRecoilState();
+
   const eventTracker = useEventTracker();
 
-  const [workspaceFromInviteHashQuery] =
-    useGetWorkspaceFromInviteHashLazyQuery();
   const { addToCommandMenu, setToInitialCommandMenu } = useCommandMenu();
 
-  const openCreateActivity = useOpenCreateActivityDrawer();
+  const openCreateActivity = useOpenCreateActivityDrawer({
+    activityObjectNameSingular: CoreObjectNameSingular.Task,
+  });
 
-  const isSignUpDisabled = useRecoilValue(isSignUpDisabledState);
+  useEffect(() => {
+    cleanRecoilState();
+  }, [cleanRecoilState]);
 
   useEffect(() => {
     if (!previousLocation || previousLocation !== location.pathname) {
@@ -56,100 +59,10 @@ export const PageChangeEffect = () => {
   }, [location, previousLocation]);
 
   useEffect(() => {
-    const isMatchingOngoingUserCreationRoute =
-      isMatchingLocation(AppPath.SignInUp) ||
-      isMatchingLocation(AppPath.Invite) ||
-      isMatchingLocation(AppPath.Verify);
-
-    const isMatchingOnboardingRoute =
-      isMatchingOngoingUserCreationRoute ||
-      isMatchingLocation(AppPath.CreateWorkspace) ||
-      isMatchingLocation(AppPath.CreateProfile) ||
-      isMatchingLocation(AppPath.PlanRequired) ||
-      isMatchingLocation(AppPath.PlanRequiredSuccess);
-
-    const navigateToSignUp = () => {
-      enqueueSnackBar('workspace does not exist', {
-        variant: 'error',
-      });
-      navigate(AppPath.SignInUp);
-    };
-
-    if (
-      onboardingStatus === OnboardingStatus.OngoingUserCreation &&
-      !isMatchingOngoingUserCreationRoute &&
-      !isMatchingLocation(AppPath.ResetPassword)
-    ) {
-      navigate(AppPath.SignInUp);
-    } else if (
-      isDefined(onboardingStatus) &&
-      onboardingStatus === OnboardingStatus.Incomplete &&
-      !isMatchingLocation(AppPath.PlanRequired)
-    ) {
-      navigate(AppPath.PlanRequired);
-    } else if (
-      isDefined(onboardingStatus) &&
-      [OnboardingStatus.Unpaid, OnboardingStatus.Canceled].includes(
-        onboardingStatus,
-      ) &&
-      !(
-        isMatchingLocation(AppPath.SettingsCatchAll) ||
-        isMatchingLocation(AppPath.PlanRequired)
-      )
-    ) {
-      navigate(
-        `${AppPath.SettingsCatchAll.replace('/*', '')}/${SettingsPath.Billing}`,
-      );
-    } else if (
-      onboardingStatus === OnboardingStatus.OngoingWorkspaceActivation &&
-      !isMatchingLocation(AppPath.CreateWorkspace) &&
-      !isMatchingLocation(AppPath.PlanRequiredSuccess)
-    ) {
-      navigate(AppPath.CreateWorkspace);
-    } else if (
-      onboardingStatus === OnboardingStatus.OngoingProfileCreation &&
-      !isMatchingLocation(AppPath.CreateProfile)
-    ) {
-      navigate(AppPath.CreateProfile);
-    } else if (
-      onboardingStatus === OnboardingStatus.Completed &&
-      isMatchingOnboardingRoute
-    ) {
-      navigate(AppPath.Index);
-    } else if (
-      onboardingStatus === OnboardingStatus.CompletedWithoutSubscription &&
-      isMatchingOnboardingRoute &&
-      !isMatchingLocation(AppPath.PlanRequired)
-    ) {
-      navigate(AppPath.Index);
-    } else if (isMatchingLocation(AppPath.Invite)) {
-      const inviteHash =
-        matchPath({ path: '/invite/:workspaceInviteHash' }, location.pathname)
-          ?.params.workspaceInviteHash || '';
-
-      workspaceFromInviteHashQuery({
-        variables: {
-          inviteHash,
-        },
-        onCompleted: (data) => {
-          if (isUndefinedOrNull(data.findWorkspaceFromInviteHash)) {
-            navigateToSignUp();
-          }
-        },
-        onError: (_) => {
-          navigateToSignUp();
-        },
-      });
+    if (isDefined(pageChangeEffectNavigateLocation)) {
+      navigate(pageChangeEffectNavigateLocation);
     }
-  }, [
-    enqueueSnackBar,
-    isMatchingLocation,
-    isSignUpDisabled,
-    location.pathname,
-    navigate,
-    onboardingStatus,
-    workspaceFromInviteHashQuery,
-  ]);
+  }, [navigate, pageChangeEffectNavigateLocation]);
 
   useEffect(() => {
     switch (true) {
@@ -198,6 +111,14 @@ export const PageChangeEffect = () => {
         setHotkeyScope(PageHotkeyScope.CreateWokspace);
         break;
       }
+      case isMatchingLocation(AppPath.SyncEmails): {
+        setHotkeyScope(PageHotkeyScope.SyncEmail);
+        break;
+      }
+      case isMatchingLocation(AppPath.InviteTeam): {
+        setHotkeyScope(PageHotkeyScope.InviteTeam);
+        break;
+      }
       case isMatchingLocation(AppPath.PlanRequired): {
         setHotkeyScope(PageHotkeyScope.PlanRequired);
         break;
@@ -233,7 +154,9 @@ export const PageChangeEffect = () => {
         type: CommandType.Create,
         Icon: IconCheckbox,
         onCommandClick: () =>
-          openCreateActivity({ type: 'Task', targetableObjects: [] }),
+          openCreateActivity({
+            targetableObjects: [],
+          }),
       },
     ]);
   }, [addToCommandMenu, setToInitialCommandMenu, openCreateActivity]);
@@ -247,6 +170,20 @@ export const PageChangeEffect = () => {
       });
     }, 500);
   }, [eventTracker, location.pathname]);
+
+  const { requestFreshCaptchaToken } = useRequestFreshCaptchaToken();
+  const isCaptchaScriptLoaded = useRecoilValue(isCaptchaScriptLoadedState);
+
+  useEffect(() => {
+    if (
+      isCaptchaScriptLoaded &&
+      (isMatchingLocation(AppPath.SignInUp) ||
+        isMatchingLocation(AppPath.Invite) ||
+        isMatchingLocation(AppPath.ResetPassword))
+    ) {
+      requestFreshCaptchaToken();
+    }
+  }, [isCaptchaScriptLoaded, isMatchingLocation, requestFreshCaptchaToken]);
 
   return <></>;
 };

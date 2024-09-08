@@ -1,13 +1,11 @@
-import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-import { DataSource, DataSourceOptions } from 'typeorm';
 import { config } from 'dotenv';
+import { DataSource, DataSourceOptions } from 'typeorm';
 config();
-const configService = new ConfigService();
 
 export const typeORMCoreModuleOptions: TypeOrmModuleOptions = {
-  url: configService.get('PG_DATABASE_URL'),
+  url: process.env.PG_DATABASE_URL,
   type: 'postgres',
   logging: ['error'],
   schema: 'core',
@@ -16,7 +14,14 @@ export const typeORMCoreModuleOptions: TypeOrmModuleOptions = {
   migrationsRun: false,
   migrationsTableName: '_typeorm_migrations',
   migrations: ['dist/src/database/typeorm/core/migrations/*{.ts,.js}'],
+  ssl:
+    process.env.PG_SSL_ALLOW_SELF_SIGNED === 'true'
+      ? {
+          rejectUnauthorized: false,
+        }
+      : undefined,
 };
+
 export const connectionSource = new DataSource(
   typeORMCoreModuleOptions as DataSourceOptions,
 );

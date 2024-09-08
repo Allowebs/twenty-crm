@@ -1,10 +1,8 @@
 import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
 import { mapFieldMetadataToGraphQLQuery } from '@/object-metadata/utils/mapFieldMetadataToGraphQLQuery';
+import { normalizeGQLField } from '~/utils/normalizeGQLField';
 
 const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
-const formatGQLString = (inputString: string) =>
-  inputString.replace(/^\s*[\r\n]/gm, '');
 
 const personObjectMetadataItem = mockObjectMetadataItems.find(
   (item) => item.nameSingular === 'person',
@@ -22,7 +20,7 @@ describe('mapFieldMetadataToGraphQLQuery', () => {
         (field) => field.name === 'id',
       )!,
     });
-    expect(formatGQLString(res)).toEqual('id');
+    expect(normalizeGQLField(res)).toEqual(normalizeGQLField('id'));
   });
   it('should return fieldName if composite', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
@@ -31,45 +29,44 @@ describe('mapFieldMetadataToGraphQLQuery', () => {
         (field) => field.name === 'name',
       )!,
     });
-    expect(formatGQLString(res)).toEqual(`name
+    expect(normalizeGQLField(res)).toEqual(
+      normalizeGQLField(`name
 {
   firstName
   lastName
-}`);
-  });
-  it('should not return relation if depth is < 1', async () => {
-    const res = mapFieldMetadataToGraphQLQuery({
-      objectMetadataItems: mockObjectMetadataItems,
-      relationFieldDepth: 0,
-      field: personObjectMetadataItem.fields.find(
-        (field) => field.name === 'company',
-      )!,
-    });
-    expect(formatGQLString(res)).toEqual('');
+}`),
+    );
   });
 
-  it('should return relation if it matches depth', async () => {
+  it('should return non relation subFields if relation', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: mockObjectMetadataItems,
-      relationFieldDepth: 1,
       field: personObjectMetadataItem.fields.find(
         (field) => field.name === 'company',
       )!,
     });
-    expect(formatGQLString(res)).toEqual(`company
+    expect(normalizeGQLField(res)).toEqual(
+      normalizeGQLField(`company
 {
 __typename
 xLink
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 linkedinLink
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 domainName
+{
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
+}
 annualRecurringRevenue
 {
   amountMicros
@@ -77,90 +74,84 @@ annualRecurringRevenue
 }
 createdAt
 address
+{
+  addressStreet1
+  addressStreet2
+  addressCity
+  addressState
+  addressCountry
+  addressPostcode
+  addressLat
+  addressLng
+}
 updatedAt
 name
 accountOwnerId
 employees
 id
 idealCustomerProfile
-}`);
+}`),
+    );
   });
-  it('should return relation with all sub relations if it matches depth', async () => {
+
+  it('should return only return relation subFields that are in recordGqlFields', async () => {
     const res = mapFieldMetadataToGraphQLQuery({
       objectMetadataItems: mockObjectMetadataItems,
-      relationFieldDepth: 2,
+      relationrecordFields: {
+        accountOwner: { id: true, name: true },
+        people: true,
+        xLink: true,
+        linkedinLink: true,
+        domainName: {
+          primaryLinkUrl: true,
+          primaryLinkLabel: true,
+          secondaryLinks: true,
+        },
+        annualRecurringRevenue: true,
+        createdAt: true,
+        address: { addressStreet1: true },
+        updatedAt: true,
+        name: true,
+        accountOwnerId: true,
+        employees: true,
+        id: true,
+        idealCustomerProfile: true,
+      },
       field: personObjectMetadataItem.fields.find(
         (field) => field.name === 'company',
       )!,
     });
-    expect(formatGQLString(res)).toEqual(`company
+    expect(normalizeGQLField(res)).toEqual(
+      normalizeGQLField(`company
 {
 __typename
 xLink
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 accountOwner
 {
 __typename
-colorScheme
 name
 {
   firstName
   lastName
 }
-locale
-userId
-avatarUrl
-createdAt
-updatedAt
 id
 }
 linkedinLink
 {
-  label
-  url
-}
-attachments
-{
-  edges {
-    node {
-__typename
-updatedAt
-createdAt
-name
-personId
-activityId
-companyId
-id
-authorId
-type
-fullPath
-}
-  }
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 domainName
-opportunities
 {
-  edges {
-    node {
-__typename
-personId
-pointOfContactId
-updatedAt
-companyId
-probability
-closeDate
-amount
-{
-  amountMicros
-  currencyCode
-}
-id
-createdAt
-}
-  }
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 annualRecurringRevenue
 {
@@ -169,36 +160,17 @@ annualRecurringRevenue
 }
 createdAt
 address
-updatedAt
-activityTargets
 {
-  edges {
-    node {
-__typename
+  addressStreet1
+  addressStreet2
+  addressCity
+  addressState
+  addressCountry
+  addressPostcode
+  addressLat
+  addressLng
+}
 updatedAt
-createdAt
-personId
-activityId
-companyId
-id
-}
-  }
-}
-favorites
-{
-  edges {
-    node {
-__typename
-id
-companyId
-createdAt
-personId
-position
-workspaceMemberId
-updatedAt
-}
-  }
-}
 people
 {
   edges {
@@ -206,8 +178,9 @@ people
 __typename
 xLink
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 id
 createdAt
@@ -222,8 +195,9 @@ name
 phone
 linkedinLink
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }
 updatedAt
 avatarUrl
@@ -236,93 +210,7 @@ accountOwnerId
 employees
 id
 idealCustomerProfile
-}`);
-  });
-
-  it('should return eagerLoaded relations', async () => {
-    const res = mapFieldMetadataToGraphQLQuery({
-      objectMetadataItems: mockObjectMetadataItems,
-      relationFieldDepth: 2,
-      relationFieldEagerLoad: { accountOwner: true, people: true },
-      field: personObjectMetadataItem.fields.find(
-        (field) => field.name === 'company',
-      )!,
-    });
-    expect(formatGQLString(res)).toEqual(`company
-{
-__typename
-xLink
-{
-  label
-  url
-}
-accountOwner
-{
-__typename
-colorScheme
-name
-{
-  firstName
-  lastName
-}
-locale
-userId
-avatarUrl
-createdAt
-updatedAt
-id
-}
-linkedinLink
-{
-  label
-  url
-}
-domainName
-annualRecurringRevenue
-{
-  amountMicros
-  currencyCode
-}
-createdAt
-address
-updatedAt
-people
-{
-  edges {
-    node {
-__typename
-xLink
-{
-  label
-  url
-}
-id
-createdAt
-city
-email
-jobTitle
-name
-{
-  firstName
-  lastName
-}
-phone
-linkedinLink
-{
-  label
-  url
-}
-updatedAt
-avatarUrl
-companyId
-}
-  }
-}
-name
-accountOwnerId
-employees
-id
-idealCustomerProfile
-}`);
+}`),
+    );
   });
 });

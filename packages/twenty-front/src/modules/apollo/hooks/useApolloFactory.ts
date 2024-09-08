@@ -1,9 +1,14 @@
-import { useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { InMemoryCache, NormalizedCacheObject } from '@apollo/client';
-import { useRecoilState } from 'recoil';
+import { useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useRecoilState, useSetRecoilState } from 'recoil';
 
+import { currentUserState } from '@/auth/states/currentUserState';
+import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { previousUrlState } from '@/auth/states/previousUrlState';
 import { tokenPairState } from '@/auth/states/tokenPairState';
+import { workspacesState } from '@/auth/states/workspaces';
 import { isDebugModeState } from '@/client-config/states/isDebugModeState';
 import { AppPath } from '@/types/AppPath';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
@@ -21,11 +26,33 @@ export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
   const navigate = useNavigate();
   const isMatchingLocation = useIsMatchingLocation();
   const [tokenPair, setTokenPair] = useRecoilState(tokenPairState);
+  const [currentWorkspace, setCurrentWorkspace] = useRecoilState(
+    currentWorkspaceState,
+  );
+  const setCurrentUser = useSetRecoilState(currentUserState);
+  const setCurrentWorkspaceMember = useSetRecoilState(
+    currentWorkspaceMemberState,
+  );
+
+  const setWorkspaces = useSetRecoilState(workspacesState);
+  const [, setPreviousUrl] = useRecoilState(previousUrlState);
+  const location = useLocation();
 
   const apolloClient = useMemo(() => {
     apolloRef.current = new ApolloFactory({
       uri: `${REACT_APP_SERVER_BASE_URL}/graphql`,
-      cache: new InMemoryCache(),
+      cache: new InMemoryCache({
+        typePolicies: {
+          RemoteTable: {
+            keyFields: ['name'],
+          },
+        },
+      }),
+      headers: {
+        ...(currentWorkspace?.metadataVersion && {
+          'X-Schema-Version': `${currentWorkspace.metadataVersion}`,
+        }),
+      },
       defaultOptions: {
         query: {
           fetchPolicy: 'cache-first',
@@ -39,12 +66,17 @@ export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
       },
       onUnauthenticatedError: () => {
         setTokenPair(null);
+        setCurrentUser(null);
+        setCurrentWorkspaceMember(null);
+        setCurrentWorkspace(null);
+        setWorkspaces(null);
         if (
           !isMatchingLocation(AppPath.Verify) &&
           !isMatchingLocation(AppPath.SignInUp) &&
           !isMatchingLocation(AppPath.Invite) &&
           !isMatchingLocation(AppPath.ResetPassword)
         ) {
+          setPreviousUrl(`${location.pathname}${location.search}`);
           navigate(AppPath.SignInUp);
         }
       },
@@ -56,7 +88,16 @@ export const useApolloFactory = (options: Partial<Options<any>> = {}) => {
 
     return apolloRef.current.getClient();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTokenPair, isDebugMode]);
+  }, [
+    setTokenPair,
+    setCurrentUser,
+    setCurrentWorkspaceMember,
+    setCurrentWorkspace,
+    setWorkspaces,
+    isDebugMode,
+    currentWorkspace?.metadataVersion,
+    setPreviousUrl,
+  ]);
 
   useUpdateEffect(() => {
     if (isDefined(apolloRef.current)) {

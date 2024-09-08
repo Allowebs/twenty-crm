@@ -1,11 +1,11 @@
 import styled from '@emotion/styled';
 import { useRecoilValue } from 'recoil';
+import { Avatar } from 'twenty-ui';
 
 import { EntityForSelect } from '@/object-record/relation-picker/types/EntityForSelect';
 import { SelectableItem } from '@/ui/layout/selectable-list/components/SelectableItem';
 import { useSelectableList } from '@/ui/layout/selectable-list/hooks/useSelectableList';
 import { MenuItemSelectAvatar } from '@/ui/navigation/menu-item/components/MenuItemSelectAvatar';
-import { Avatar } from '@/users/components/Avatar';
 
 type SelectableMenuItemSelectProps = {
   entity: EntityForSelect;
@@ -27,7 +27,6 @@ export const SelectableMenuItemSelect = ({
   );
 
   const isSelectedItemId = useRecoilValue(isSelectedItemIdSelector(entity.id));
-
   return (
     <StyledSelectableItem itemId={entity.id} key={entity.id}>
       <MenuItemSelectAvatar
@@ -40,7 +39,7 @@ export const SelectableMenuItemSelect = ({
         avatar={
           <Avatar
             avatarUrl={entity.avatarUrl}
-            entityId={entity.id}
+            placeholderColorSeed={entity.id}
             placeholder={entity.name}
             size="md"
             type={entity.avatarType ?? 'rounded'}

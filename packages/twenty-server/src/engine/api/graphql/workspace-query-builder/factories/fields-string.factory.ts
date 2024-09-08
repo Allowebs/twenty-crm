@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { GraphQLResolveInfo } from 'graphql';
 import graphqlFields from 'graphql-fields';
@@ -6,6 +6,7 @@ import isEmpty from 'lodash.isempty';
 
 import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
 import { ObjectMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/object-metadata.interface';
+import { Record } from 'src/engine/api/graphql/workspace-query-builder/interfaces/record.interface';
 
 import { isRelationFieldMetadataType } from 'src/engine/utils/is-relation-field-metadata-type.util';
 
@@ -14,33 +15,36 @@ import { RelationFieldAliasFactory } from './relation-field-alias.factory';
 
 @Injectable()
 export class FieldsStringFactory {
-  private readonly logger = new Logger(FieldsStringFactory.name);
-
   constructor(
     private readonly fieldAliasFactory: FieldAliasFactory,
     private readonly relationFieldAliasFactory: RelationFieldAliasFactory,
   ) {}
 
-  create(
+  async create(
     info: GraphQLResolveInfo,
     fieldMetadataCollection: FieldMetadataInterface[],
     objectMetadataCollection: ObjectMetadataInterface[],
+    withSoftDeleted?: boolean,
   ): Promise<string> {
-    const selectedFields: Record<string, any> = graphqlFields(info);
+    const selectedFields: Partial<Record> = graphqlFields(info);
 
-    return this.createFieldsStringRecursive(
+    const res = await this.createFieldsStringRecursive(
       info,
       selectedFields,
       fieldMetadataCollection,
       objectMetadataCollection,
+      withSoftDeleted ?? false,
     );
+
+    return res;
   }
 
   async createFieldsStringRecursive(
     info: GraphQLResolveInfo,
-    selectedFields: Record<string, any>,
+    selectedFields: Partial<Record>,
     fieldMetadataCollection: FieldMetadataInterface[],
     objectMetadataCollection: ObjectMetadataInterface[],
+    withSoftDeleted: boolean,
     accumulator = '',
   ): Promise<string> {
     const fieldMetadataMap = new Map(
@@ -64,6 +68,7 @@ export class FieldsStringFactory {
             fieldMetadata,
             objectMetadataCollection,
             info,
+            withSoftDeleted,
           );
 
           fieldAlias = alias;
@@ -90,6 +95,7 @@ export class FieldsStringFactory {
           fieldValue,
           fieldMetadataCollection,
           objectMetadataCollection,
+          withSoftDeleted,
           accumulator,
         );
         accumulator += `}\n`;

@@ -2,10 +2,13 @@ import {
   IsArray,
   IsBoolean,
   IsDate,
-  IsJSON,
   IsNotEmpty,
   IsNumber,
   IsNumberString,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
   Matches,
   ValidateIf,
 } from 'class-validator';
@@ -27,11 +30,16 @@ export class FieldMetadataDefaultValueString {
 }
 
 export class FieldMetadataDefaultValueRawJson {
-  @ValidateIf((object, value) => value !== null)
-  @IsJSON()
-  value: JSON | null;
+  @ValidateIf((_object, value) => value !== null)
+  @IsObject()
+  value: object | null;
 }
 
+export class FieldMetadataDefaultValueRichText {
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  value: string | null;
+}
 export class FieldMetadataDefaultValueNumber {
   @ValidateIf((object, value) => value !== null)
   @IsNumber()
@@ -52,6 +60,12 @@ export class FieldMetadataDefaultValueStringArray {
 }
 
 export class FieldMetadataDefaultValueDateTime {
+  @ValidateIf((object, value) => value !== null)
+  @IsDate()
+  value: Date | null;
+}
+
+export class FieldMetadataDefaultValueDate {
   @ValidateIf((object, value) => value !== null)
   @IsDate()
   value: Date | null;
@@ -97,4 +111,77 @@ export class FieldMetadataDefaultValueNowFunction {
   @Matches(fieldMetadataDefaultValueFunctionName.NOW)
   @IsNotEmpty()
   value: typeof fieldMetadataDefaultValueFunctionName.NOW;
+}
+
+export class FieldMetadataDefaultValueAddress {
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressStreet1: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressStreet2: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressCity: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressPostcode: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressState: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  addressCountry: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsNumber()
+  addressLat: number | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsNumber()
+  addressLng: number | null;
+}
+
+export class FieldMetadataDefaultValueLinks {
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryLinkLabel: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryLinkUrl: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsObject()
+  secondaryLinks: object | null;
+}
+
+export class FieldMetadataDefaultActor {
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  source: string;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsOptional()
+  @IsUUID()
+  workspaceMemberId?: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  name: string;
+}
+
+export class FieldMetadataDefaultValueEmails {
+  @ValidateIf((_object, value) => value !== null)
+  @IsQuotedString()
+  primaryEmail: string | null;
+
+  @ValidateIf((_object, value) => value !== null)
+  @IsObject()
+  additionalEmails: string[] | null;
 }

@@ -1,22 +1,24 @@
-import { ComponentProps, ReactNode } from 'react';
-import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
-import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { ReactNode } from 'react';
 import { useRecoilValue } from 'recoil';
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconComponent,
+  IconX,
+  MOBILE_VIEWPORT,
+  OverflowingTextWithTooltip,
+} from 'twenty-ui';
 
-import { IconChevronLeft } from '@/ui/display/icon/index';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-import { OverflowingTextWithTooltip } from '@/ui/display/tooltip/OverflowingTextWithTooltip';
 import { IconButton } from '@/ui/input/button/components/IconButton';
 import { NavigationDrawerCollapseButton } from '@/ui/navigation/navigation-drawer/components/NavigationDrawerCollapseButton';
 import { isNavigationDrawerOpenState } from '@/ui/navigation/states/isNavigationDrawerOpenState';
-import { MOBILE_VIEWPORT } from '@/ui/theme/constants/MobileViewport';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
 export const PAGE_BAR_MIN_HEIGHT = 40;
 
-const StyledTopBarContainer = styled.div`
+const StyledTopBarContainer = styled.div<{ width?: number }>`
   align-items: center;
   background: ${({ theme }) => theme.background.noisy};
   color: ${({ theme }) => theme.font.color.primary};
@@ -29,6 +31,7 @@ const StyledTopBarContainer = styled.div`
   padding-left: 0;
   padding-right: ${({ theme }) => theme.spacing(3)};
   z-index: 20;
+  width: ${({ width }) => width + 'px' || '100%'};
 
   @media (max-width: ${MOBILE_VIEWPORT}px) {
     padding-left: ${({ theme }) => theme.spacing(3)};
@@ -51,15 +54,18 @@ const StyledLeftContainer = styled.div`
 const StyledTitleContainer = styled.div`
   display: flex;
   font-size: ${({ theme }) => theme.font.size.md};
+  font-weight: ${({ theme }) => theme.font.weight.medium};
   margin-left: ${({ theme }) => theme.spacing(1)};
-  max-width: 50%;
+  width: 100%;
 `;
 
 const StyledTopBarIconStyledTitleContainer = styled.div`
   align-items: center;
   display: flex;
   flex: 1 0 auto;
+  gap: ${({ theme }) => theme.spacing(1)};
   flex-direction: row;
+  width: 100%;
 `;
 
 const StyledPageActionContainer = styled.div`
@@ -72,65 +78,82 @@ const StyledTopBarButtonContainer = styled.div`
   margin-right: ${({ theme }) => theme.spacing(1)};
 `;
 
-const StyledSkeletonLoader = () => {
-  const theme = useTheme();
-  return (
-    <SkeletonTheme
-      baseColor={theme.background.quaternary}
-      highlightColor={theme.background.transparent.light}
-      borderRadius={50}
-    >
-      <Skeleton height={24} width={108} />
-    </SkeletonTheme>
-  );
-};
-
-type PageHeaderProps = ComponentProps<'div'> & {
-  title: string;
-  hasBackButton?: boolean;
+type PageHeaderProps = {
+  title: ReactNode;
+  hasClosePageButton?: boolean;
+  onClosePage?: () => void;
+  hasPaginationButtons?: boolean;
+  hasPreviousRecord?: boolean;
+  hasNextRecord?: boolean;
+  navigateToPreviousRecord?: () => void;
+  navigateToNextRecord?: () => void;
   Icon: IconComponent;
   children?: ReactNode;
-  loading?: boolean;
+  width?: number;
 };
 
 export const PageHeader = ({
   title,
-  hasBackButton,
+  hasClosePageButton,
+  onClosePage,
+  hasPaginationButtons,
+  hasPreviousRecord,
+  hasNextRecord,
+  navigateToPreviousRecord,
+  navigateToNextRecord,
   Icon,
   children,
-  loading,
+  width,
 }: PageHeaderProps) => {
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const theme = useTheme();
   const isNavigationDrawerOpen = useRecoilValue(isNavigationDrawerOpenState);
 
   return (
-    <StyledTopBarContainer>
+    <StyledTopBarContainer width={width}>
       <StyledLeftContainer>
         {!isMobile && !isNavigationDrawerOpen && (
           <StyledTopBarButtonContainer>
             <NavigationDrawerCollapseButton direction="right" />
           </StyledTopBarButtonContainer>
         )}
-        {hasBackButton && (
+        {hasClosePageButton && (
           <IconButton
-            Icon={IconChevronLeft}
+            Icon={IconX}
             size="small"
-            onClick={() => navigate(-1)}
             variant="tertiary"
+            onClick={() => onClosePage?.()}
           />
         )}
-        {loading ? (
-          <StyledSkeletonLoader />
-        ) : (
-          <StyledTopBarIconStyledTitleContainer>
-            {Icon && <Icon size={theme.icon.size.md} />}
-            <StyledTitleContainer data-testid="top-bar-title">
+
+        <StyledTopBarIconStyledTitleContainer>
+          {hasPaginationButtons && (
+            <>
+              <IconButton
+                Icon={IconChevronUp}
+                size="small"
+                variant="secondary"
+                disabled={!hasPreviousRecord}
+                onClick={() => navigateToPreviousRecord?.()}
+              />
+              <IconButton
+                Icon={IconChevronDown}
+                size="small"
+                variant="secondary"
+                disabled={!hasNextRecord}
+                onClick={() => navigateToNextRecord?.()}
+              />
+            </>
+          )}
+          {Icon && <Icon size={theme.icon.size.md} />}
+          <StyledTitleContainer data-testid="top-bar-title">
+            {typeof title === 'string' ? (
               <OverflowingTextWithTooltip text={title} />
-            </StyledTitleContainer>
-          </StyledTopBarIconStyledTitleContainer>
-        )}
+            ) : (
+              title
+            )}
+          </StyledTitleContainer>
+        </StyledTopBarIconStyledTitleContainer>
       </StyledLeftContainer>
       <StyledPageActionContainer>{children}</StyledPageActionContainer>
     </StyledTopBarContainer>

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
 import { isUndefined } from '@sniptt/guards';
+import { useEffect, useState } from 'react';
 import { useRecoilValue } from 'recoil';
 
 import { useViewStates } from '@/views/hooks/internal/useViewStates';
 import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
-import { GraphQLView } from '@/views/types/GraphQLView';
+import { View } from '@/views/types/View';
 import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
 
 type ViewBarEffectProps = {
@@ -21,8 +21,9 @@ export const ViewBarEffect = ({ viewBarId }: ViewBarEffectProps) => {
   } = useViewStates(viewBarId);
 
   const [currentViewSnapshot, setCurrentViewSnapshot] = useState<
-    GraphQLView | undefined
+    View | undefined
   >(undefined);
+
   const onCurrentViewChange = useRecoilValue(onCurrentViewChangeState);
   const availableFilterDefinitions = useRecoilValue(
     availableFilterDefinitionsState,

@@ -1,20 +1,20 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { MessagingPersonListener } from 'src/modules/messaging/listeners/messaging-person.listener';
-import { MessagingWorkspaceMemberListener } from 'src/modules/messaging/listeners/messaging-workspace-member.listener';
-import { MessagingMessageChannelListener } from 'src/modules/messaging/listeners/messaging-message-channel.listener';
-import { MessagingConnectedAccountListener } from 'src/modules/messaging/listeners/messaging-connected-account.listener';
-import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
+import { MessagingBlocklistManagerModule } from 'src/modules/messaging/blocklist-manager/messaging-blocklist-manager.module';
+import { MessagingMessageCleanerModule } from 'src/modules/messaging/message-cleaner/messaging-message-cleaner.module';
+import { MessagingImportManagerModule } from 'src/modules/messaging/message-import-manager/messaging-import-manager.module';
+import { MessageParticipantManagerModule } from 'src/modules/messaging/message-participant-manager/message-participant-manager.module';
+import { MessagingMonitoringModule } from 'src/modules/messaging/monitoring/messaging-monitoring.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([FeatureFlagEntity], 'core')],
-  providers: [
-    MessagingPersonListener,
-    MessagingWorkspaceMemberListener,
-    MessagingMessageChannelListener,
-    MessagingConnectedAccountListener,
+  imports: [
+    MessagingImportManagerModule,
+    MessagingMessageCleanerModule,
+    MessageParticipantManagerModule,
+    MessagingBlocklistManagerModule,
+    MessagingMonitoringModule,
   ],
+  providers: [],
   exports: [],
 })
 export class MessagingModule {}

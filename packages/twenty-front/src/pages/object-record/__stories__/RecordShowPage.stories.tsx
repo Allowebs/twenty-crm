@@ -1,35 +1,43 @@
+import { expect } from '@storybook/jest';
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
-import { graphql, HttpResponse } from 'msw';
+import { HttpResponse, graphql } from 'msw';
 
 import {
   PageDecorator,
   PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { mockedPeopleData } from '~/testing/mock-data/people';
+import { getPeopleMock, peopleQueryResult } from '~/testing/mock-data/people';
 import { mockedWorkspaceMemberData } from '~/testing/mock-data/users';
 
+import { viewQueryResultMock } from '~/testing/mock-data/views';
 import { RecordShowPage } from '../RecordShowPage';
+
+const peopleMock = getPeopleMock();
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/ObjectRecord/RecordShowPage',
   component: RecordShowPage,
-  decorators: [PageDecorator],
   args: {
     routePath: '/object/:objectNameSingular/:objectRecordId',
     routeParams: {
       ':objectNameSingular': 'person',
-      ':objectRecordId': '1234',
+      ':objectRecordId': peopleMock[0].id,
     },
   },
   parameters: {
     msw: {
       handlers: [
+        graphql.query('FindManyPeople', () => {
+          return HttpResponse.json({
+            data: peopleQueryResult,
+          });
+        }),
         graphql.query('FindOnePerson', () => {
           return HttpResponse.json({
             data: {
-              person: mockedPeopleData[0],
+              person: peopleMock[0],
             },
           });
         }),
@@ -58,15 +66,7 @@ const meta: Meta<PageDecoratorArgs> = {
         graphql.query('FindManyViews', () => {
           return HttpResponse.json({
             data: {
-              views: {
-                edges: [],
-                pageInfo: {
-                  hasNextPage: false,
-                  startCursor: '1234',
-                  endCursor: '1234',
-                },
-                totalCount: 0,
-              },
+              views: viewQueryResultMock,
             },
           });
         }),
@@ -81,10 +81,22 @@ export default meta;
 export type Story = StoryObj<typeof RecordShowPage>;
 
 export const Default: Story = {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  decorators: [PageDecorator],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await canvas.findAllByText('Alexandre Prot');
-    await canvas.findByText('Add your first Activity');
+    // await canvas.findAllByText(peopleMock[0].name.firstName);
+    expect(
+      await canvas.findByText('Twenty', undefined, {
+        timeout: 5000,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      await canvas.findByText('Add your first Activity', undefined, {
+        timeout: 3000,
+      }),
+    ).toBeInTheDocument();
   },
 };

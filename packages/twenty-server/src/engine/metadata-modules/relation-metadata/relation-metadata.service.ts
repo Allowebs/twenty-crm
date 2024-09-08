@@ -1,28 +1,36 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { TypeOrmQueryService } from '@ptc-org/nestjs-query-typeorm';
-import { FindOneOptions, In, Repository } from 'typeorm';
 import camelCase from 'lodash.camelcase';
+import { FindOneOptions, In, Repository } from 'typeorm';
 import { v4 as uuidV4 } from 'uuid';
 
-import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
+import {
+  FieldMetadataEntity,
+  FieldMetadataType,
+} from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { FieldMetadataService } from 'src/engine/metadata-modules/field-metadata/field-metadata.service';
-import { CreateRelationInput } from 'src/engine/metadata-modules/relation-metadata/dtos/create-relation.input';
-import { WorkspaceMigrationRunnerService } from 'src/engine/workspace-manager/workspace-migration-runner/workspace-migration-runner.service';
-import { WorkspaceMigrationService } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.service';
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { WorkspaceMigrationColumnActionType } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
 import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
-import { createCustomColumnName } from 'src/engine/utils/create-custom-column-name.util';
-import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
-import { createRelationForeignKeyColumnName } from 'src/engine/metadata-modules/relation-metadata/utils/create-relation-foreign-key-column-name.util';
+import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
+import { CreateRelationInput } from 'src/engine/metadata-modules/relation-metadata/dtos/create-relation.input';
+import {
+  RelationMetadataException,
+  RelationMetadataExceptionCode,
+} from 'src/engine/metadata-modules/relation-metadata/relation-metadata.exception';
+import { InvalidStringException } from 'src/engine/metadata-modules/utils/exceptions/invalid-string.exception';
+import { validateFieldNameAvailabilityOrThrow } from 'src/engine/metadata-modules/utils/validate-field-name-availability.utils';
+import { validateMetadataNameValidityOrThrow } from 'src/engine/metadata-modules/utils/validate-metadata-name-validity.utils';
+import { WorkspaceMetadataVersionService } from 'src/engine/metadata-modules/workspace-metadata-version/workspace-metadata-version.service';
 import { generateMigrationName } from 'src/engine/metadata-modules/workspace-migration/utils/generate-migration-name.util';
+import {
+  WorkspaceMigrationColumnActionType,
+  WorkspaceMigrationColumnDrop,
+  WorkspaceMigrationTableActionType,
+} from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
+import { WorkspaceMigrationService } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.service';
+import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
+import { WorkspaceMigrationRunnerService } from 'src/engine/workspace-manager/workspace-migration-runner/workspace-migration-runner.service';
 
 import {
   RelationMetadataEntity,
@@ -35,10 +43,13 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
   constructor(
     @InjectRepository(RelationMetadataEntity, 'metadata')
     private readonly relationMetadataRepository: Repository<RelationMetadataEntity>,
+    @InjectRepository(FieldMetadataEntity, 'metadata')
+    private readonly fieldMetadataRepository: Repository<FieldMetadataEntity>,
     private readonly objectMetadataService: ObjectMetadataService,
     private readonly fieldMetadataService: FieldMetadataService,
     private readonly workspaceMigrationService: WorkspaceMigrationService,
     private readonly workspaceMigrationRunnerService: WorkspaceMigrationRunnerService,
+    private readonly workspaceMetadataVersionService: WorkspaceMetadataVersionService,
   ) {
     super(relationMetadataRepository);
   }
@@ -50,6 +61,20 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
       relationMetadataInput,
     );
 
+    try {
+      validateMetadataNameValidityOrThrow(relationMetadataInput.fromName);
+      validateMetadataNameValidityOrThrow(relationMetadataInput.toName);
+    } catch (error) {
+      if (error instanceof InvalidStringException) {
+        throw new RelationMetadataException(
+          `Characters used in name "${relationMetadataInput.fromName}" or "${relationMetadataInput.toName}" are not supported`,
+          RelationMetadataExceptionCode.INVALID_RELATION_INPUT,
+        );
+      } else {
+        throw error;
+      }
+    }
+
     await this.validateCreateRelationMetadataInput(
       relationMetadataInput,
       objectMetadataMap,
@@ -57,11 +82,7 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
 
     // NOTE: this logic is called to create relation through metadata graphql endpoint (so only for custom field relations)
     const isCustom = true;
-    const baseColumnName = `${camelCase(relationMetadataInput.toName)}Id`;
-    const foreignKeyColumnName = createRelationForeignKeyColumnName(
-      relationMetadataInput.toName,
-      isCustom,
-    );
+    const columnName = `${camelCase(relationMetadataInput.toName)}Id`;
 
     const fromId = uuidV4();
     const toId = uuidV4();
@@ -79,11 +100,7 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
         isCustom,
         toId,
       ),
-      this.createForeignKeyFieldMetadata(
-        relationMetadataInput,
-        baseColumnName,
-        foreignKeyColumnName,
-      ),
+      this.createForeignKeyFieldMetadata(relationMetadataInput, columnName),
     ]);
 
     const createdRelationMetadata = await super.createOne({
@@ -95,10 +112,14 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
     await this.createWorkspaceCustomMigration(
       relationMetadataInput,
       objectMetadataMap,
-      foreignKeyColumnName,
+      columnName,
     );
 
     await this.workspaceMigrationRunnerService.executeMigrationFromPendingMigrations(
+      relationMetadataInput.workspaceId,
+    );
+
+    await this.workspaceMetadataVersionService.incrementMetadataVersion(
       relationMetadataInput.workspaceId,
     );
 
@@ -112,8 +133,9 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
     if (
       relationMetadataInput.relationType === RelationMetadataType.MANY_TO_MANY
     ) {
-      throw new BadRequestException(
+      throw new RelationMetadataException(
         'Many to many relations are not supported yet',
+        RelationMetadataExceptionCode.INVALID_RELATION_INPUT,
       );
     }
 
@@ -122,8 +144,9 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
         undefined ||
       objectMetadataMap[relationMetadataInput.toObjectMetadataId] === undefined
     ) {
-      throw new NotFoundException(
+      throw new RelationMetadataException(
         'Can\t find an existing object matching with fromObjectMetadataId or toObjectMetadataId',
+        RelationMetadataExceptionCode.RELATION_METADATA_NOT_FOUND,
       );
     }
 
@@ -136,6 +159,15 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
       relationMetadataInput,
       objectMetadataMap,
       'to',
+    );
+
+    validateFieldNameAvailabilityOrThrow(
+      relationMetadataInput.fromName,
+      objectMetadataMap[relationMetadataInput.fromObjectMetadataId],
+    );
+    validateFieldNameAvailabilityOrThrow(
+      relationMetadataInput.toName,
+      objectMetadataMap[relationMetadataInput.toObjectMetadataId],
     );
   }
 
@@ -157,12 +189,13 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
       );
 
     if (fieldAlreadyExists) {
-      throw new ConflictException(
+      throw new RelationMetadataException(
         `Field on ${
           objectMetadataMap[
             relationMetadataInput[`${relationDirection}ObjectMetadataId`]
           ].nameSingular
         } already exists`,
+        RelationMetadataExceptionCode.RELATION_ALREADY_EXISTS,
       );
     }
   }
@@ -170,7 +203,7 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
   private async createWorkspaceCustomMigration(
     relationMetadataInput: CreateRelationInput,
     objectMetadataMap: { [key: string]: ObjectMetadataEntity },
-    foreignKeyColumnName: string,
+    columnName: string,
   ) {
     await this.workspaceMigrationService.createCustomMigration(
       generateMigrationName(`create-${relationMetadataInput.fromName}`),
@@ -181,13 +214,14 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
           name: computeObjectTargetTable(
             objectMetadataMap[relationMetadataInput.toObjectMetadataId],
           ),
-          action: 'alter',
+          action: WorkspaceMigrationTableActionType.ALTER,
           columns: [
             {
               action: WorkspaceMigrationColumnActionType.CREATE,
-              columnName: foreignKeyColumnName,
+              columnName,
               columnType: 'uuid',
               isNullable: true,
+              defaultValue: null,
             },
           ],
         },
@@ -196,11 +230,11 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
           name: computeObjectTargetTable(
             objectMetadataMap[relationMetadataInput.toObjectMetadataId],
           ),
-          action: 'alter',
+          action: WorkspaceMigrationTableActionType.ALTER,
           columns: [
             {
               action: WorkspaceMigrationColumnActionType.CREATE_FOREIGN_KEY,
-              columnName: foreignKeyColumnName,
+              columnName,
               referencedTableName: computeObjectTargetTable(
                 objectMetadataMap[relationMetadataInput.fromObjectMetadataId],
               ),
@@ -228,13 +262,7 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
       label: relationMetadataInput[`${relationDirection}Label`],
       description: relationMetadataInput[`${relationDirection}Description`],
       icon: relationMetadataInput[`${relationDirection}Icon`],
-      isCustom: true,
-      targetColumnMap:
-        relationDirection === 'to'
-          ? isCustom
-            ? createCustomColumnName(relationMetadataInput.toName)
-            : relationMetadataInput.toName
-          : {},
+      isCustom,
       isActive: true,
       isNullable: true,
       type: FieldMetadataType.RELATION,
@@ -246,18 +274,16 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
 
   private createForeignKeyFieldMetadata(
     relationMetadataInput: CreateRelationInput,
-    baseColumnName: string,
-    foreignKeyColumnName: string,
+    columnName: string,
   ) {
     return {
-      name: baseColumnName,
+      name: columnName,
       label: `${relationMetadataInput.toLabel} Foreign Key`,
       description: relationMetadataInput.toDescription
         ? `${relationMetadataInput.toDescription} Foreign Key`
         : undefined,
       icon: undefined,
       isCustom: true,
-      targetColumnMap: { value: foreignKeyColumnName },
       isActive: true,
       isNullable: true,
       isSystem: true,
@@ -307,29 +333,146 @@ export class RelationMetadataService extends TypeOrmQueryService<RelationMetadat
     });
   }
 
-  override async deleteOne(id: string): Promise<RelationMetadataEntity> {
+  public async deleteOneRelation(
+    id: string,
+    workspaceId: string,
+  ): Promise<RelationMetadataEntity> {
     // TODO: This logic is duplicated with the BeforeDeleteOneRelation hook
     const relationMetadata = await this.relationMetadataRepository.findOne({
       where: { id },
-      relations: ['fromFieldMetadata', 'toFieldMetadata'],
+      relations: [
+        'fromFieldMetadata',
+        'toFieldMetadata',
+        'fromObjectMetadata',
+        'toObjectMetadata',
+      ],
     });
 
     if (!relationMetadata) {
-      throw new NotFoundException('Relation does not exist');
+      throw new RelationMetadataException(
+        'Relation does not exist',
+        RelationMetadataExceptionCode.RELATION_METADATA_NOT_FOUND,
+      );
     }
 
-    const deletedRelationMetadata = super.deleteOne(id);
+    const foreignKeyFieldMetadataName = `${camelCase(
+      relationMetadata.toFieldMetadata.name,
+    )}Id`;
+
+    const foreignKeyFieldMetadata = await this.fieldMetadataRepository.findOne({
+      where: {
+        name: foreignKeyFieldMetadataName,
+        objectMetadataId: relationMetadata.toObjectMetadataId,
+        workspaceId: relationMetadata.workspaceId,
+      },
+    });
+
+    if (!foreignKeyFieldMetadata) {
+      throw new RelationMetadataException(
+        `Foreign key fieldMetadata not found (${foreignKeyFieldMetadataName}) for relation ${relationMetadata.id}`,
+        RelationMetadataExceptionCode.FOREIGN_KEY_NOT_FOUND,
+      );
+    }
+
+    await super.deleteOne(id);
 
     // TODO: Move to a cdc scheduler
-    this.fieldMetadataService.deleteMany({
+    await this.fieldMetadataService.deleteMany({
       id: {
         in: [
           relationMetadata.fromFieldMetadataId,
           relationMetadata.toFieldMetadataId,
+          foreignKeyFieldMetadata.id,
         ],
       },
     });
 
-    return deletedRelationMetadata;
+    const columnName = `${camelCase(relationMetadata.toFieldMetadata.name)}Id`;
+    const objectTargetTable = computeObjectTargetTable(
+      relationMetadata.toObjectMetadata,
+    );
+
+    await this.deleteRelationWorkspaceCustomMigration(
+      relationMetadata,
+      objectTargetTable,
+      columnName,
+    );
+
+    await this.workspaceMigrationRunnerService.executeMigrationFromPendingMigrations(
+      relationMetadata.workspaceId,
+    );
+
+    await this.workspaceMetadataVersionService.incrementMetadataVersion(
+      workspaceId,
+    );
+
+    // TODO: Return id for delete endpoints
+    return relationMetadata;
+  }
+
+  async findManyRelationMetadataByFieldMetadataIds(
+    fieldMetadataIds: string[],
+  ): Promise<(RelationMetadataEntity | NotFoundException)[]> {
+    const relationMetadataCollection =
+      await this.relationMetadataRepository.find({
+        where: [
+          {
+            fromFieldMetadataId: In(fieldMetadataIds),
+          },
+          {
+            toFieldMetadataId: In(fieldMetadataIds),
+          },
+        ],
+        relations: [
+          'fromObjectMetadata',
+          'toObjectMetadata',
+          'fromFieldMetadata',
+          'toFieldMetadata',
+        ],
+      });
+
+    const mappedResult = fieldMetadataIds.map((fieldMetadataId) => {
+      const foundRelationMetadataItem = relationMetadataCollection.find(
+        (relationMetadataItem) =>
+          relationMetadataItem.fromFieldMetadataId === fieldMetadataId ||
+          relationMetadataItem.toFieldMetadataId === fieldMetadataId,
+      );
+
+      return (
+        foundRelationMetadataItem ??
+        // TODO: return a relation metadata not found exception
+        new NotFoundException(
+          `RelationMetadata with fieldMetadataId ${fieldMetadataId} not found`,
+        )
+      );
+    });
+
+    return mappedResult;
+  }
+
+  private async deleteRelationWorkspaceCustomMigration(
+    relationMetadata: RelationMetadataEntity,
+    objectTargetTable: string,
+    columnName: string,
+  ) {
+    await this.workspaceMigrationService.createCustomMigration(
+      generateMigrationName(
+        `delete-relation-from-${relationMetadata.fromObjectMetadata.nameSingular}-to-${relationMetadata.toObjectMetadata.nameSingular}`,
+      ),
+      relationMetadata.workspaceId,
+      [
+        // Delete the column
+        {
+          name: objectTargetTable,
+          action: WorkspaceMigrationTableActionType.ALTER,
+          columns: [
+            {
+              action: WorkspaceMigrationColumnActionType.DROP,
+              columnName,
+            } satisfies WorkspaceMigrationColumnDrop,
+          ],
+        },
+      ],
+    );
   }
 }

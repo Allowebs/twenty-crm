@@ -2,13 +2,19 @@ import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldDefinition } from '../FieldDefinition';
 import {
+  FieldActorMetadata,
+  FieldAddressMetadata,
   FieldBooleanMetadata,
   FieldCurrencyMetadata,
+  FieldDateMetadata,
   FieldDateTimeMetadata,
   FieldEmailMetadata,
+  FieldEmailsMetadata,
   FieldFullNameMetadata,
   FieldLinkMetadata,
+  FieldLinksMetadata,
   FieldMetadata,
+  FieldMultiSelectMetadata,
   FieldNumberMetadata,
   FieldPhoneMetadata,
   FieldRatingMetadata,
@@ -29,29 +35,41 @@ type AssertFieldMetadataFunction = <
         ? FieldFullNameMetadata
         : E extends 'DATE_TIME'
           ? FieldDateTimeMetadata
-          : E extends 'EMAIL'
-            ? FieldEmailMetadata
-            : E extends 'SELECT'
-              ? FieldSelectMetadata
-              : E extends 'RATING'
-                ? FieldRatingMetadata
-                : E extends 'LINK'
-                  ? FieldLinkMetadata
-                  : E extends 'NUMBER'
-                    ? FieldNumberMetadata
-                    : E extends 'PHONE'
-                      ? FieldPhoneMetadata
-                      : E extends 'PROBABILITY'
-                        ? FieldRatingMetadata
-                        : E extends 'RELATION'
-                          ? FieldRelationMetadata
-                          : E extends 'TEXT'
-                            ? FieldTextMetadata
-                            : E extends 'UUID'
-                              ? FieldUuidMetadata
-                              : E extends 'RAW_JSON'
-                                ? FieldRawJsonMetadata
-                                : never,
+          : E extends 'DATE'
+            ? FieldDateMetadata
+            : E extends 'EMAIL'
+              ? FieldEmailMetadata
+              : E extends 'EMAILS'
+                ? FieldEmailsMetadata
+                : E extends 'SELECT'
+                  ? FieldSelectMetadata
+                  : E extends 'MULTI_SELECT'
+                    ? FieldMultiSelectMetadata
+                    : E extends 'RATING'
+                      ? FieldRatingMetadata
+                      : E extends 'LINK'
+                        ? FieldLinkMetadata
+                        : E extends 'LINKS'
+                          ? FieldLinksMetadata
+                          : E extends 'NUMBER'
+                            ? FieldNumberMetadata
+                            : E extends 'PHONE'
+                              ? FieldPhoneMetadata
+                              : E extends 'RELATION'
+                                ? FieldRelationMetadata
+                                : E extends 'TEXT'
+                                  ? FieldTextMetadata
+                                  : E extends 'UUID'
+                                    ? FieldUuidMetadata
+                                    : E extends 'ADDRESS'
+                                      ? FieldAddressMetadata
+                                      : E extends 'RAW_JSON'
+                                        ? FieldRawJsonMetadata
+                                        : E extends 'RICH_TEXT'
+                                          ? FieldTextMetadata
+                                          : E extends 'ACTOR'
+                                            ? FieldActorMetadata
+                                            : never,
 >(
   fieldType: E,
   fieldTypeGuard: (

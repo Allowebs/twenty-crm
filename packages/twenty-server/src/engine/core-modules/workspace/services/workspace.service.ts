@@ -1,30 +1,43 @@
-import { InjectRepository } from '@nestjs/typeorm';
 import { BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import assert from 'assert';
 
 import { TypeOrmQueryService } from '@ptc-org/nestjs-query-typeorm';
+import { render } from '@react-email/render';
+import { SendInviteLinkEmail } from 'twenty-emails';
 import { Repository } from 'typeorm';
 
-import { WorkspaceManagerService } from 'src/engine/workspace-manager/workspace-manager.service';
-import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { User } from 'src/engine/core-modules/user/user.entity';
-import { ActivateWorkspaceInput } from 'src/engine/core-modules/workspace/dtos/activate-workspace-input';
+import { BillingSubscriptionService } from 'src/engine/core-modules/billing/services/billing-subscription.service';
+import { OnboardingService } from 'src/engine/core-modules/onboarding/onboarding.service';
 import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
 import { UserWorkspaceService } from 'src/engine/core-modules/user-workspace/user-workspace.service';
-import { BillingService } from 'src/engine/core-modules/billing/billing.service';
+import { User } from 'src/engine/core-modules/user/user.entity';
+import { ActivateWorkspaceInput } from 'src/engine/core-modules/workspace/dtos/activate-workspace-input';
+import { SendInviteLink } from 'src/engine/core-modules/workspace/dtos/send-invite-link.entity';
+import {
+  Workspace,
+  WorkspaceActivationStatus,
+} from 'src/engine/core-modules/workspace/workspace.entity';
+import { EmailService } from 'src/engine/integrations/email/email.service';
+import { EnvironmentService } from 'src/engine/integrations/environment/environment.service';
+import { WorkspaceManagerService } from 'src/engine/workspace-manager/workspace-manager.service';
 
+// eslint-disable-next-line @nx/workspace-inject-workspace-repository
 export class WorkspaceService extends TypeOrmQueryService<Workspace> {
   constructor(
     @InjectRepository(Workspace, 'core')
     private readonly workspaceRepository: Repository<Workspace>,
-    @InjectRepository(UserWorkspace, 'core')
-    private readonly userWorkspaceRepository: Repository<UserWorkspace>,
     @InjectRepository(User, 'core')
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserWorkspace, 'core')
+    private readonly userWorkspaceRepository: Repository<UserWorkspace>,
     private readonly workspaceManagerService: WorkspaceManagerService,
     private readonly userWorkspaceService: UserWorkspaceService,
-    private readonly billingService: BillingService,
+    private readonly billingSubscriptionService: BillingSubscriptionService,
+    private readonly environmentService: EnvironmentService,
+    private readonly emailService: EmailService,
+    private readonly onboardingService: OnboardingService,
   ) {
     super(workspaceRepository);
   }
@@ -33,155 +46,161 @@ export class WorkspaceService extends TypeOrmQueryService<Workspace> {
     if (!data.displayName || !data.displayName.length) {
       throw new BadRequestException("'displayName' not provided");
     }
-    await this.workspaceRepository.update(user.defaultWorkspace.id, {
-      displayName: data.displayName,
+
+    const existingWorkspace = await this.workspaceRepository.findOneBy({
+      id: user.defaultWorkspace.id,
     });
+
+    if (!existingWorkspace) {
+      throw new Error('Workspace not found');
+    }
+
+    if (
+      existingWorkspace.activationStatus ===
+      WorkspaceActivationStatus.ONGOING_CREATION
+    ) {
+      throw new Error('Workspace is already being created');
+    }
+
+    if (
+      existingWorkspace.activationStatus !==
+      WorkspaceActivationStatus.PENDING_CREATION
+    ) {
+      throw new Error('Worspace is not pending creation');
+    }
+
+    await this.workspaceRepository.update(user.defaultWorkspace.id, {
+      activationStatus: WorkspaceActivationStatus.ONGOING_CREATION,
+    });
+
     await this.workspaceManagerService.init(user.defaultWorkspace.id);
     await this.userWorkspaceService.createWorkspaceMember(
       user.defaultWorkspace.id,
       user,
     );
+    await this.workspaceRepository.update(user.defaultWorkspace.id, {
+      displayName: data.displayName,
+      activationStatus: WorkspaceActivationStatus.ACTIVE,
+    });
 
     return user.defaultWorkspace;
   }
 
-  async isWorkspaceActivated(id: string): Promise<boolean> {
-    return await this.workspaceManagerService.doesDataSourceExist(id);
-  }
-
-  async deleteWorkspace(id: string, shouldDeleteCoreWorkspace = true) {
+  async softDeleteWorkspace(id: string) {
     const workspace = await this.workspaceRepository.findOneBy({ id });
 
     assert(workspace, 'Workspace not found');
 
     await this.userWorkspaceRepository.delete({ workspaceId: id });
-    await this.billingService.deleteSubscription(workspace.id);
+    await this.billingSubscriptionService.deleteSubscription(workspace.id);
 
     await this.workspaceManagerService.delete(id);
-    if (shouldDeleteCoreWorkspace) {
-      await this.workspaceRepository.delete(id);
-    }
 
     return workspace;
   }
 
-  async getWorkspaceIds() {
-    return this.workspaceRepository
-      .find()
-      .then((workspaces) => workspaces.map((workspace) => workspace.id));
+  async deleteWorkspace(id: string) {
+    const userWorkspaces = await this.userWorkspaceRepository.findBy({
+      workspaceId: id,
+    });
+
+    const workspace = await this.softDeleteWorkspace(id);
+
+    for (const userWorkspace of userWorkspaces) {
+      await this.handleRemoveWorkspaceMember(id, userWorkspace.userId);
+    }
+
+    await this.workspaceRepository.delete(id);
+
+    return workspace;
   }
 
-  private async reassignDefaultWorkspace(
-    currentWorkspaceId: string,
-    user: User,
-    worskpaces: UserWorkspace[],
+  async handleRemoveWorkspaceMember(workspaceId: string, userId: string) {
+    await this.userWorkspaceRepository.delete({
+      userId,
+      workspaceId,
+    });
+    await this.reassignOrRemoveUserDefaultWorkspace(workspaceId, userId);
+  }
+
+  async sendInviteLink(
+    emails: string[],
+    workspace: Workspace,
+    sender: User,
+  ): Promise<SendInviteLink> {
+    if (!workspace?.inviteHash) {
+      return { success: false };
+    }
+
+    const frontBaseURL = this.environmentService.get('FRONT_BASE_URL');
+    const inviteLink = `${frontBaseURL}/invite/${workspace.inviteHash}`;
+
+    for (const email of emails) {
+      const emailData = {
+        link: inviteLink,
+        workspace: { name: workspace.displayName, logo: workspace.logo },
+        sender: { email: sender.email, firstName: sender.firstName },
+        serverUrl: this.environmentService.get('SERVER_URL'),
+      };
+      const emailTemplate = SendInviteLinkEmail(emailData);
+      const html = render(emailTemplate, {
+        pretty: true,
+      });
+
+      const text = render(emailTemplate, {
+        plainText: true,
+      });
+
+      await this.emailService.send({
+        from: `${this.environmentService.get(
+          'EMAIL_FROM_NAME',
+        )} <${this.environmentService.get('EMAIL_FROM_ADDRESS')}>`,
+        to: email,
+        subject: 'Join your team on Twenty',
+        text,
+        html,
+      });
+    }
+
+    await this.onboardingService.setOnboardingInviteTeamPending({
+      workspaceId: workspace.id,
+      value: false,
+    });
+
+    return { success: true };
+  }
+
+  private async reassignOrRemoveUserDefaultWorkspace(
+    workspaceId: string,
+    userId: string,
   ) {
-    // We'll filter all user workspaces without the one which its getting removed from
-    const filteredUserWorkspaces = worskpaces.filter(
-      (workspace) => workspace.workspaceId !== currentWorkspaceId,
-    );
-
-    // Loop over each workspace in the filteredUserWorkspaces array and check if it currently exists in
-    // the database
-    for (let index = 0; index < filteredUserWorkspaces.length; index++) {
-      const userWorkspace = filteredUserWorkspaces[index];
-
-      const nextWorkspace = await this.workspaceRepository.findOneBy({
-        id: userWorkspace.workspaceId,
-      });
-
-      if (nextWorkspace) {
-        await this.userRepository.save({
-          id: user.id,
-          defaultWorkspace: nextWorkspace,
-          updatedAt: new Date().toISOString(),
-        });
-        break;
-      }
-
-      // if no workspaces are valid then we delete the user
-      if (index === filteredUserWorkspaces.length - 1) {
-        await this.userRepository.delete({ id: user.id });
-      }
-    }
-  }
-
-  /* 
-  async removeWorkspaceMember(workspaceId: string, memberId: string) {
-    const dataSourceMetadata =
-      await this.dataSourceService.getLastDataSourceMetadataFromWorkspaceIdOrFail(
-        workspaceId,
-      );
-
-    const workspaceDataSource =
-      await this.typeORMService.connectToDataSource(dataSourceMetadata);
-
-    // using "SELECT *" here because we will need the corresponding members userId later
-    const [workspaceMember] = await workspaceDataSource?.query(
-      `SELECT * FROM ${dataSourceMetadata.schema}."workspaceMember" WHERE "id" = '${memberId}'`,
-    );
-
-    if (!workspaceMember) {
-      throw new NotFoundException('Member not found.');
-    }
-
-    await workspaceDataSource?.query(
-      `DELETE FROM ${dataSourceMetadata.schema}."workspaceMember" WHERE "id" = '${memberId}'`,
-    );
-
-    const workspaceMemberUser = await this.userRepository.findOne({
-      where: {
-        id: workspaceMember.userId,
-      },
-      relations: ['defaultWorkspace'],
-    });
-
-    if (!workspaceMemberUser) {
-      throw new NotFoundException('User not found');
-    }
-
     const userWorkspaces = await this.userWorkspaceRepository.find({
-      where: { userId: workspaceMemberUser.id },
-      relations: ['workspace'],
+      where: { userId: userId },
     });
 
-    // We want to check if we the user has signed up to more than one workspace
-    if (userWorkspaces.length > 1) {
-      // We neeed to check if the workspace that its getting removed from is its default workspace, if it is then
-      // change the default workspace to point to the next workspace available.
-      if (workspaceMemberUser.defaultWorkspace.id === workspaceId) {
-        await this.reassignDefaultWorkspace(
-          workspaceId,
-          workspaceMemberUser,
-          userWorkspaces,
-        );
-      }
-      // if its not the default workspace then simply delete the user-workspace mapping
-      await this.userWorkspaceRepository.delete({
-        userId: workspaceMemberUser.id,
-        workspaceId,
-      });
-    } else {
-      await this.userWorkspaceRepository.delete({
-        userId: workspaceMemberUser.id,
-      });
+    if (userWorkspaces.length === 0) {
+      await this.userRepository.delete({ id: userId });
 
-      // After deleting the user-workspace mapping, we have a condition where we have the users default workspace points to a
-      // workspace which it doesnt have access to. So we delete the user.
-      await this.userRepository.delete({ id: workspaceMemberUser.id });
+      return;
     }
 
-    const payload =
-      new ObjectRecordDeleteEvent<WorkspaceMemberObjectMetadata>();
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+      },
+    });
 
-    payload.workspaceId = workspaceId;
-    payload.details = {
-      before: workspaceMember,
-    };
+    if (!user) {
+      throw new Error(`User ${userId} not found in workspace ${workspaceId}`);
+    }
 
-    this.eventEmitter.emit('workspaceMember.deleted', payload);
-
-    return memberId;
+    if (user.defaultWorkspaceId === workspaceId) {
+      await this.userRepository.update(
+        { id: userId },
+        {
+          defaultWorkspaceId: userWorkspaces[0].workspaceId,
+        },
+      );
+    }
   }
-  */
 }

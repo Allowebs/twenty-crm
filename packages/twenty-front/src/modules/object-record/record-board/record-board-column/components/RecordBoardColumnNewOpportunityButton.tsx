@@ -1,15 +1,10 @@
-import { useCallback, useContext, useState } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconPlus } from 'twenty-ui';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { RecordBoardContext } from '@/object-record/record-board/contexts/RecordBoardContext';
-import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
+import { useAddNewOpportunity } from '@/object-record/record-board/record-board-column/hooks/useAddNewOpportunity';
 import { SingleEntitySelect } from '@/object-record/relation-picker/components/SingleEntitySelect';
-import { EntityForSelect } from '@/object-record/relation-picker/types/EntityForSelect';
-import { RelationPickerHotkeyScope } from '@/object-record/relation-picker/types/RelationPickerHotkeyScope';
-import { IconPlus } from '@/ui/display/icon';
-import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 
 const StyledButton = styled.button`
   align-items: center;
@@ -29,46 +24,13 @@ const StyledButton = styled.button`
 `;
 
 export const RecordBoardColumnNewOpportunityButton = () => {
-  const [isCreatingCard, setIsCreatingCard] = useState(false);
-
   const theme = useTheme();
-  const { columnDefinition } = useContext(RecordBoardColumnContext);
-  const { createOneRecord, selectFieldMetadataItem } =
-    useContext(RecordBoardContext);
-
   const {
-    goBackToPreviousHotkeyScope,
-    setHotkeyScopeAndMemorizePreviousScope,
-  } = usePreviousHotkeyScope();
-
-  const handleEntitySelect = (company?: EntityForSelect) => {
-    setIsCreatingCard(false);
-    goBackToPreviousHotkeyScope();
-
-    if (!company) {
-      return;
-    }
-
-    createOneRecord({
-      name: company.name,
-      companyId: company.id,
-      position: 'last',
-      [selectFieldMetadataItem.name]: columnDefinition.value,
-    });
-  };
-
-  const handleNewClick = useCallback(() => {
-    setIsCreatingCard(true);
-    setHotkeyScopeAndMemorizePreviousScope(
-      RelationPickerHotkeyScope.RelationPicker,
-    );
-  }, [setIsCreatingCard, setHotkeyScopeAndMemorizePreviousScope]);
-
-  const handleCancel = () => {
-    goBackToPreviousHotkeyScope();
-    setIsCreatingCard(false);
-  };
-
+    isCreatingCard,
+    handleAddNewOpportunityClick,
+    handleCancel,
+    handleEntitySelect,
+  } = useAddNewOpportunity('last');
   return (
     <>
       {isCreatingCard ? (
@@ -81,7 +43,7 @@ export const RecordBoardColumnNewOpportunityButton = () => {
           selectedRelationRecordIds={[]}
         />
       ) : (
-        <StyledButton onClick={handleNewClick}>
+        <StyledButton onClick={handleAddNewOpportunityClick}>
           <IconPlus size={theme.icon.size.md} />
           New
         </StyledButton>

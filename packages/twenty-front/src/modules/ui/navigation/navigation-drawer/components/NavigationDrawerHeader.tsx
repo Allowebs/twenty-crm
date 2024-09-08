@@ -7,14 +7,15 @@ import { DEFAULT_WORKSPACE_LOGO } from '@/ui/navigation/navigation-drawer/consta
 import { DEFAULT_WORKSPACE_NAME } from '@/ui/navigation/navigation-drawer/constants/DefaultWorkspaceName';
 import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 
+import { isNonEmptyString } from '@sniptt/guards';
 import { NavigationDrawerCollapseButton } from './NavigationDrawerCollapseButton';
 
-const StyledContainer = styled.div`
+const StyledContainer = styled.div<{ isMultiWorkspace: boolean }>`
   align-items: center;
   display: flex;
-  gap: ${({ theme }) => theme.spacing(2)};
-  height: ${({ theme }) => theme.spacing(6)};
-  padding: ${({ theme }) => theme.spacing(1)};
+  gap: ${({ theme, isMultiWorkspace }) =>
+    !isMultiWorkspace ? theme.spacing(2) : null};
+  height: ${({ theme }) => theme.spacing(8)};
   user-select: none;
 `;
 
@@ -55,14 +56,17 @@ export const NavigationDrawerHeader = ({
 }: NavigationDrawerHeaderProps) => {
   const isMobile = useIsMobile();
   const workspaces = useRecoilValue(workspacesState);
+  const isMultiWorkspace = workspaces !== null && workspaces.length > 1;
 
   return (
-    <StyledContainer>
-      {workspaces !== null && workspaces.length > 1 ? (
+    <StyledContainer isMultiWorkspace={isMultiWorkspace}>
+      {isMultiWorkspace ? (
         <MultiWorkspaceDropdownButton workspaces={workspaces} />
       ) : (
         <>
-          <StyledLogo logo={logo} />
+          <StyledLogo
+            logo={isNonEmptyString(logo) ? logo : DEFAULT_WORKSPACE_LOGO}
+          />
           <StyledName>{name}</StyledName>
         </>
       )}

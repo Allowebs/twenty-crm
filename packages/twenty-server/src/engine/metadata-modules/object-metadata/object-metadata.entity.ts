@@ -1,19 +1,21 @@
 import {
-  Entity,
-  Unique,
-  PrimaryGeneratedColumn,
   Column,
-  OneToMany,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  Relation,
+  Unique,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import { ObjectMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/object-metadata.interface';
 
-import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
-import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { DataSourceEntity } from 'src/engine/metadata-modules/data-source/data-source.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
 @Entity('objectMetadata')
 @Unique('IndexOnNameSingularAndWorkspaceIdUnique', [
@@ -64,11 +66,17 @@ export class ObjectMetadataEntity implements ObjectMetadataInterface {
   @Column({ default: false })
   isSystem: boolean;
 
-  @Column({ nullable: true })
-  labelIdentifierFieldMetadataId?: string;
+  @Column({ default: true })
+  isAuditLogged: boolean;
 
-  @Column({ nullable: true })
-  imageIdentifierFieldMetadataId?: string;
+  @Column({ nullable: true, type: 'boolean' })
+  isSoftDeletable?: boolean | null;
+
+  @Column({ nullable: true, type: 'uuid' })
+  labelIdentifierFieldMetadataId?: string | null;
+
+  @Column({ nullable: true, type: 'uuid' })
+  imageIdentifierFieldMetadataId?: string | null;
 
   @Column({ nullable: false, type: 'uuid' })
   workspaceId: string;
@@ -76,7 +84,12 @@ export class ObjectMetadataEntity implements ObjectMetadataInterface {
   @OneToMany(() => FieldMetadataEntity, (field) => field.object, {
     cascade: true,
   })
-  fields: FieldMetadataEntity[];
+  fields: Relation<FieldMetadataEntity[]>;
+
+  @OneToMany(() => IndexMetadataEntity, (index) => index.objectMetadata, {
+    cascade: true,
+  })
+  indexes: Relation<IndexMetadataEntity[]>;
 
   @OneToMany(
     () => RelationMetadataEntity,
@@ -85,7 +98,7 @@ export class ObjectMetadataEntity implements ObjectMetadataInterface {
       cascade: true,
     },
   )
-  fromRelations: RelationMetadataEntity[];
+  fromRelations: Relation<RelationMetadataEntity[]>;
 
   @OneToMany(
     () => RelationMetadataEntity,
@@ -94,16 +107,16 @@ export class ObjectMetadataEntity implements ObjectMetadataInterface {
       cascade: true,
     },
   )
-  toRelations: RelationMetadataEntity[];
+  toRelations: Relation<RelationMetadataEntity[]>;
 
   @ManyToOne(() => DataSourceEntity, (dataSource) => dataSource.objects, {
     onDelete: 'CASCADE',
   })
-  dataSource: DataSourceEntity;
+  dataSource: Relation<DataSourceEntity>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

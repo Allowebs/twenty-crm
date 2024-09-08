@@ -4,6 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
 
 import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
 import { FieldMetadataType } from '~/generated/graphql';
+import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
 
 import { FieldContextProvider } from '../../../__stories__/FieldContextProvider';
 import { useTextField } from '../../../hooks/useTextField';
@@ -21,11 +22,11 @@ const TextFieldValueSetterEffect = ({ value }: { value: string }) => {
 
 type TextFieldInputWithContextProps = TextFieldInputProps & {
   value: string;
-  entityId?: string;
+  recordId?: string;
 };
 
 const TextFieldInputWithContext = ({
-  entityId,
+  recordId,
   value,
   onEnter,
   onEscape,
@@ -50,9 +51,10 @@ const TextFieldInputWithContext = ({
           metadata: {
             fieldName: 'Text',
             placeHolder: 'Enter text',
+            objectMetadataNameSingular: 'person',
           },
         }}
-        entityId={entityId}
+        recordId={recordId}
       >
         <TextFieldValueSetterEffect value={value} />
         <TextFieldInput
@@ -103,7 +105,7 @@ const meta: Meta = {
     onTab: { control: false },
     onShiftTab: { control: false },
   },
-  decorators: [clearMocksDecorator],
+  decorators: [clearMocksDecorator, SnackBarDecorator],
   parameters: {
     clearMocks: true,
   },

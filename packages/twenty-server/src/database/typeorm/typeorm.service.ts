@@ -6,11 +6,13 @@ import { EnvironmentService } from 'src/engine/integrations/environment/environm
 import { DataSourceEntity } from 'src/engine/metadata-modules/data-source/data-source.entity';
 import { User } from 'src/engine/core-modules/user/user.entity';
 import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
-import { RefreshToken } from 'src/engine/core-modules/refresh-token/refresh-token.entity';
+import { AppToken } from 'src/engine/core-modules/app-token/app-token.entity';
 import { FeatureFlagEntity } from 'src/engine/core-modules/feature-flag/feature-flag.entity';
 import { BillingSubscription } from 'src/engine/core-modules/billing/entities/billing-subscription.entity';
 import { BillingSubscriptionItem } from 'src/engine/core-modules/billing/entities/billing-subscription-item.entity';
 import { UserWorkspace } from 'src/engine/core-modules/user-workspace/user-workspace.entity';
+import { KeyValuePair } from 'src/engine/core-modules/key-value-pair/key-value-pair.entity';
+import { PostgresCredentials } from 'src/engine/core-modules/postgres-credentials/postgres-credentials.entity';
 
 @Injectable()
 export class TypeORMService implements OnModuleInit, OnModuleDestroy {
@@ -28,11 +30,21 @@ export class TypeORMService implements OnModuleInit, OnModuleDestroy {
         User,
         Workspace,
         UserWorkspace,
-        RefreshToken,
+        AppToken,
+        KeyValuePair,
         FeatureFlagEntity,
         BillingSubscription,
         BillingSubscriptionItem,
+        PostgresCredentials,
       ],
+      ssl: environmentService.get('PG_SSL_ALLOW_SELF_SIGNED')
+        ? {
+            rejectUnauthorized: false,
+          }
+        : undefined,
+      extra: {
+        query_timeout: 10000,
+      },
     });
   }
 
@@ -40,11 +52,6 @@ export class TypeORMService implements OnModuleInit, OnModuleDestroy {
     return this.mainDataSource;
   }
 
-  /**
-   * Connects to a data source using metadata. Returns a cached connection if it exists.
-   * @param dataSource DataSourceEntity
-   * @returns Promise<DataSource | undefined>
-   */
   public async connectToDataSource(
     dataSource: DataSourceEntity,
   ): Promise<DataSource | undefined> {
@@ -89,6 +96,11 @@ export class TypeORMService implements OnModuleInit, OnModuleDestroy {
         ? ['query', 'error']
         : ['error'],
       schema,
+      ssl: this.environmentService.get('PG_SSL_ALLOW_SELF_SIGNED')
+        ? {
+            rejectUnauthorized: false,
+          }
+        : undefined,
     });
 
     await workspaceDataSource.initialize();
@@ -96,12 +108,6 @@ export class TypeORMService implements OnModuleInit, OnModuleDestroy {
     return workspaceDataSource;
   }
 
-  /**
-   * Disconnects from a workspace data source.
-   * @param dataSourceId
-   * @returns Promise<void>
-   *
-   */
   public async disconnectFromDataSource(dataSourceId: string) {
     if (!this.dataSources.has(dataSourceId)) {
       return;
@@ -114,11 +120,6 @@ export class TypeORMService implements OnModuleInit, OnModuleDestroy {
     this.dataSources.delete(dataSourceId);
   }
 
-  /**
-   * Creates a new schema
-   * @param workspaceId
-   * @returns Promise<void>
-   */
   public async createSchema(schemaName: string): Promise<string> {
     const queryRunner = this.mainDataSource.createQueryRunner();
 

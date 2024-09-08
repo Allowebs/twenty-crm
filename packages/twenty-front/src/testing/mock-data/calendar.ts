@@ -1,6 +1,7 @@
 import { addDays, subHours, subMonths } from 'date-fns';
 
 import { CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
+import { CalendarChannelVisibility } from '~/generated/graphql';
 
 export const mockedCalendarEvents: CalendarEvent[] = [
   {
@@ -9,12 +10,31 @@ export const mockedCalendarEvents: CalendarEvent[] = [
     id: '9a6b35f1-6078-415b-9540-f62671bb81d0',
     isFullDay: false,
     startsAt: addDays(new Date().setHours(10, 0), 1).toISOString(),
-    visibility: 'METADATA',
-    attendees: [
-      { displayName: 'John Doe', workspaceMemberId: 'john-doe' },
-      { displayName: 'Jane Doe', workspaceMemberId: 'jane-doe' },
-      { displayName: 'Tim Apple', workspaceMemberId: 'tim-apple' },
+    visibility: CalendarChannelVisibility.Metadata,
+    calendarEventParticipants: [
+      {
+        id: '1',
+        handle: 'jdoe',
+        isOrganizer: false,
+        responseStatus: 'ACCEPTED',
+        displayName: 'John Doe',
+      },
+      {
+        id: '2',
+        handle: 'jadoe',
+        isOrganizer: false,
+        responseStatus: 'ACCEPTED',
+        displayName: 'Jane Doe',
+      },
+      {
+        id: '3',
+        handle: 'tapple',
+        isOrganizer: false,
+        responseStatus: 'ACCEPTED',
+        displayName: 'Tim Apple',
+      },
     ],
+    __typename: 'CalendarEvent',
   },
   {
     externalCreatedAt: subHours(new Date(), 2).toISOString(),
@@ -24,7 +44,8 @@ export const mockedCalendarEvents: CalendarEvent[] = [
     isFullDay: false,
     startsAt: new Date(new Date().setHours(18, 0)).toISOString(),
     title: 'Bug solving',
-    visibility: 'SHARE_EVERYTHING',
+    visibility: CalendarChannelVisibility.ShareEverything,
+    __typename: 'CalendarEvent',
   },
   {
     externalCreatedAt: subHours(new Date(), 2).toISOString(),
@@ -33,7 +54,8 @@ export const mockedCalendarEvents: CalendarEvent[] = [
     isFullDay: false,
     startsAt: new Date(new Date().setHours(15, 15)).toISOString(),
     title: 'Onboarding Follow-Up Call',
-    visibility: 'SHARE_EVERYTHING',
+    visibility: CalendarChannelVisibility.ShareEverything,
+    __typename: 'CalendarEvent',
   },
   {
     externalCreatedAt: subHours(new Date(), 2).toISOString(),
@@ -42,14 +64,16 @@ export const mockedCalendarEvents: CalendarEvent[] = [
     isFullDay: false,
     startsAt: new Date(new Date().setHours(10, 0)).toISOString(),
     title: 'Onboarding Call',
-    visibility: 'SHARE_EVERYTHING',
+    visibility: CalendarChannelVisibility.ShareEverything,
+    __typename: 'CalendarEvent',
   },
   {
     externalCreatedAt: subHours(new Date(), 2).toISOString(),
     id: '5a792d11-259a-4099-af51-59eb85e15d83',
     isFullDay: true,
     startsAt: subMonths(new Date().setHours(8, 0), 1).toISOString(),
-    visibility: 'METADATA',
+    visibility: CalendarChannelVisibility.Metadata,
+    __typename: 'CalendarEvent',
   },
   {
     externalCreatedAt: subHours(new Date(), 2).toISOString(),
@@ -58,6 +82,7 @@ export const mockedCalendarEvents: CalendarEvent[] = [
     isFullDay: false,
     startsAt: subMonths(new Date().setHours(14, 0), 3).toISOString(),
     title: 'Alan x Garry',
-    visibility: 'SHARE_EVERYTHING',
+    visibility: CalendarChannelVisibility.ShareEverything,
+    __typename: 'CalendarEvent',
   },
 ];

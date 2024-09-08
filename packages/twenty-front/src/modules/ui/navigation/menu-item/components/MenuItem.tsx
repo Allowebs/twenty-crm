@@ -1,6 +1,8 @@
-import { MouseEvent } from 'react';
+import { useTheme } from '@emotion/react';
+import { FunctionComponent, MouseEvent, ReactElement, ReactNode } from 'react';
+import { IconChevronRight, IconComponent } from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { LightIconButtonProps } from '@/ui/input/button/components/LightIconButton';
 import { LightIconButtonGroup } from '@/ui/input/button/components/LightIconButtonGroup';
 
 import { MenuItemLeftContent } from '../internals/components/MenuItemLeftContent';
@@ -11,34 +13,44 @@ import {
 import { MenuItemAccent } from '../types/MenuItemAccent';
 
 export type MenuItemIconButton = {
+  Wrapper?: FunctionComponent<{ iconButton: ReactElement }>;
   Icon: IconComponent;
+  accent?: LightIconButtonProps['accent'];
   onClick?: (event: MouseEvent<any>) => void;
 };
 
 export type MenuItemProps = {
-  LeftIcon?: IconComponent | null;
   accent?: MenuItemAccent;
-  text: string;
-  iconButtons?: MenuItemIconButton[];
-  isTooltipOpen?: boolean;
   className?: string;
+  iconButtons?: MenuItemIconButton[];
+  isIconDisplayedOnHoverOnly?: boolean;
+  isTooltipOpen?: boolean;
+  LeftIcon?: IconComponent | null;
+  onClick?: (event: MouseEvent<HTMLDivElement>) => void;
+  onMouseEnter?: (event: MouseEvent<HTMLDivElement>) => void;
+  onMouseLeave?: (event: MouseEvent<HTMLDivElement>) => void;
   testId?: string;
-  onClick?: (event: MouseEvent<HTMLLIElement>) => void;
+  text: ReactNode;
+  hasSubMenu?: boolean;
 };
 
 export const MenuItem = ({
-  LeftIcon,
   accent = 'default',
-  text,
-  iconButtons,
-  isTooltipOpen,
   className,
-  testId,
+  iconButtons,
+  isIconDisplayedOnHoverOnly = true,
+  LeftIcon,
   onClick,
+  onMouseEnter,
+  onMouseLeave,
+  testId,
+  text,
+  hasSubMenu = false,
 }: MenuItemProps) => {
+  const theme = useTheme();
   const showIconButtons = Array.isArray(iconButtons) && iconButtons.length > 0;
 
-  const handleMenuItemClick = (event: MouseEvent<HTMLLIElement>) => {
+  const handleMenuItemClick = (event: MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
     event.preventDefault();
     event.stopPropagation();
@@ -52,7 +64,9 @@ export const MenuItem = ({
       onClick={handleMenuItemClick}
       className={className}
       accent={accent}
-      isMenuOpen={!!isTooltipOpen}
+      isIconDisplayedOnHoverOnly={isIconDisplayedOnHoverOnly}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <StyledMenuItemLeftContent>
         <MenuItemLeftContent LeftIcon={LeftIcon ?? undefined} text={text} />
@@ -62,6 +76,12 @@ export const MenuItem = ({
           <LightIconButtonGroup iconButtons={iconButtons} size="small" />
         )}
       </div>
+      {hasSubMenu && (
+        <IconChevronRight
+          size={theme.icon.size.sm}
+          color={theme.font.color.tertiary}
+        />
+      )}
     </StyledHoverableMenuItemBase>
   );
 };

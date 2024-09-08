@@ -1,7 +1,8 @@
+import { GraphQLBoolean, GraphQLID, GraphQLInt, GraphQLString } from 'graphql';
+
 import { WorkspaceResolverBuilderMethodNames } from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
 import { ArgMetadata } from 'src/engine/api/graphql/workspace-schema-builder/interfaces/param-metadata.interface';
 
-import { FieldMetadataType } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
 import { InputTypeDefinitionKind } from 'src/engine/api/graphql/workspace-schema-builder/factories/input-type-definition.factory';
 
 export const getResolverArgs = (
@@ -11,19 +12,23 @@ export const getResolverArgs = (
     case 'findMany':
       return {
         first: {
-          type: FieldMetadataType.NUMBER,
+          type: GraphQLInt,
           isNullable: true,
         },
         last: {
-          type: FieldMetadataType.NUMBER,
+          type: GraphQLInt,
           isNullable: true,
         },
         before: {
-          type: FieldMetadataType.TEXT,
+          type: GraphQLString,
           isNullable: true,
         },
         after: {
-          type: FieldMetadataType.TEXT,
+          type: GraphQLString,
+          isNullable: true,
+        },
+        limit: {
+          type: GraphQLInt,
           isNullable: true,
         },
         filter: {
@@ -33,6 +38,7 @@ export const getResolverArgs = (
         orderBy: {
           kind: InputTypeDefinitionKind.OrderBy,
           isNullable: true,
+          isArray: true,
         },
       };
     case 'findOne':
@@ -50,6 +56,11 @@ export const getResolverArgs = (
           isNullable: false,
           isArray: true,
         },
+        upsert: {
+          type: GraphQLBoolean,
+          isNullable: true,
+          isArray: false,
+        },
       };
     case 'createOne':
       return {
@@ -57,11 +68,16 @@ export const getResolverArgs = (
           kind: InputTypeDefinitionKind.Create,
           isNullable: false,
         },
+        upsert: {
+          type: GraphQLBoolean,
+          isNullable: true,
+          isArray: false,
+        },
       };
     case 'updateOne':
       return {
         id: {
-          type: FieldMetadataType.UUID,
+          type: GraphQLID,
           isNullable: false,
         },
         data: {
@@ -71,26 +87,21 @@ export const getResolverArgs = (
       };
     case 'findDuplicates':
       return {
-        id: {
-          type: FieldMetadataType.UUID,
+        ids: {
+          type: GraphQLID,
           isNullable: true,
+          isArray: true,
         },
         data: {
           kind: InputTypeDefinitionKind.Create,
           isNullable: true,
+          isArray: true,
         },
       };
     case 'deleteOne':
       return {
         id: {
-          type: FieldMetadataType.UUID,
-          isNullable: false,
-        },
-      };
-    case 'executeQuickActionOnOne':
-      return {
-        id: {
-          type: FieldMetadataType.UUID,
+          type: GraphQLID,
           isNullable: false,
         },
       };
@@ -100,6 +111,20 @@ export const getResolverArgs = (
           kind: InputTypeDefinitionKind.Update,
           isNullable: false,
         },
+        filter: {
+          kind: InputTypeDefinitionKind.Filter,
+          isNullable: false,
+        },
+      };
+    case 'restoreMany':
+      return {
+        filter: {
+          kind: InputTypeDefinitionKind.Filter,
+          isNullable: false,
+        },
+      };
+    case 'destroyMany':
+      return {
         filter: {
           kind: InputTypeDefinitionKind.Filter,
           isNullable: false,

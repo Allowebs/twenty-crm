@@ -8,22 +8,28 @@ export enum AppPath {
   // Onboarding
   CreateWorkspace = '/create/workspace',
   CreateProfile = '/create/profile',
+  SyncEmails = '/sync/emails',
+  InviteTeam = '/invite-team',
   PlanRequired = '/plan-required',
   PlanRequiredSuccess = '/plan-required/payment-success',
 
   // Onboarded
   Index = '/',
-  TasksPage = '/tasks',
+  TasksPage = '/objects/tasks',
   OpportunitiesPage = '/objects/opportunities',
 
   RecordIndexPage = '/objects/:objectNamePlural',
   RecordShowPage = '/object/:objectNameSingular/:objectRecordId',
 
-  SettingsCatchAll = `/settings/*`,
-  DevelopersCatchAll = `/developers/*`,
+  Settings = `settings`,
+  SettingsCatchAll = `/${Settings}/*`,
+  Developers = `developers`,
+  DevelopersCatchAll = `/${Developers}/*`,
 
   // Impersonate
   Impersonate = '/impersonate/:userId',
+
+  Authorize = '/authorize',
 
   // 404 page not found
   NotFoundWildcard = '*',

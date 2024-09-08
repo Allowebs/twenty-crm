@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
 
-import { WorkspaceDataSourceModule } from 'src/engine/workspace-datasource/workspace-datasource.module';
-import { UserModule } from 'src/engine/core-modules/user/user.module';
 import { TimelineCalendarEventResolver } from 'src/engine/core-modules/calendar/timeline-calendar-event.resolver';
 import { TimelineCalendarEventService } from 'src/engine/core-modules/calendar/timeline-calendar-event.service';
+import { UserModule } from 'src/engine/core-modules/user/user.module';
 
 @Module({
-  imports: [WorkspaceDataSourceModule, UserModule],
+  imports: [UserModule],
   exports: [],
   providers: [TimelineCalendarEventResolver, TimelineCalendarEventService],
 })
